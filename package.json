@@ -1,0 +1,34 @@
+{
+  "name": "skillproof",
+  "version": "0.1.0",
+  "description": "Verify that Claude agent skills are correctly adopted in your codebase",
+  "type": "module",
+  "bin": {
+    "skillproof": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "lint": "eslint .",
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write ."
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@langchain/core": "1.1.41",
+    "@sap-ai-sdk/langchain": "2.10.0",
+    "commander": "^14.0.0",
+    "glob": "^11.0.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.4",
+    "@types/node": "24.12.0",
+    "eslint": "9.39.4",
+    "prettier": "3.8.1",
+    "rimraf": "6.1.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.19.0",
+    "typescript": "5.9.3"
+  }
+}
