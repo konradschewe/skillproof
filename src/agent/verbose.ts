@@ -169,8 +169,15 @@ export class VerboseHandler extends BaseCallbackHandler {
   // Tool result returned
   handleToolEnd(output: unknown) {
     if (this.label === "evaluator") {
-      // This is the explorer subagent's findings coming back
-      const raw = typeof output === "string" ? output : JSON.stringify(output);
+      // output may be a ToolMessage object — extract its content string
+      let raw: string;
+      if (typeof output === "string") {
+        raw = output;
+      } else if (typeof (output as any)?.content === "string") {
+        raw = (output as any).content;
+      } else {
+        raw = JSON.stringify(output);
+      }
       let rendered = raw;
       try {
         const obj = JSON.parse(raw);

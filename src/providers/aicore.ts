@@ -4,10 +4,17 @@ import type { LLMProvider } from "./types.js";
 
 export class AICoreProvider implements LLMProvider {
   readonly type = "aicore" as const;
+  readonly explorerModelId: string;
 
-  constructor(readonly modelId: string) {}
+  constructor(readonly modelId: string) {
+    this.explorerModelId = modelId;
+  }
 
   createModel(): BaseChatModel {
     return new AzureOpenAiChatClient({ modelName: this.modelId }) as unknown as BaseChatModel;
+  }
+
+  createExplorerModel(): BaseChatModel {
+    return this.createModel();
   }
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { HumanMessage } from "@langchain/core/messages";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { createAgent, toolStrategy } from "langchain";
+import { GraphRecursionError } from "@langchain/langgraph";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import type { SkillEvaluationResult } from "../evaluator/types.js";
@@ -39,7 +40,8 @@ export class EvaluationAgent {
       const explorerTools = prepareExplorerTools(await mcp.getTools(), excludePatterns);
       const model = this.provider.createModel();
 
-      const explorer = new ExplorerAgent(model, explorerTools, this.verbose);
+      const explorerModel = this.provider.createExplorerModel();
+      const explorer = new ExplorerAgent(explorerModel, explorerTools, repoPath, this.verbose);
       const evaluatorMetricsHandler = new MetricsHandler();
 
       const evaluator = createAgent({
@@ -53,10 +55,22 @@ export class EvaluationAgent {
         ? [new VerboseHandler("evaluator"), evaluatorMetricsHandler]
         : [evaluatorMetricsHandler];
 
-      const result = await evaluator.invoke(
-        { messages: [new HumanMessage(buildUserPrompt(skill))] },
-        { callbacks, recursionLimit: RECURSION_LIMIT } as any
-      );
+      let result: Awaited<ReturnType<typeof evaluator.invoke>>;
+      try {
+        result = await evaluator.invoke(
+          { messages: [new HumanMessage(buildUserPrompt(skill))] },
+          { callbacks, recursionLimit: RECURSION_LIMIT } as any
+        );
+      } catch (err) {
+        if (!(err instanceof GraphRecursionError)) throw err;
+        result = {
+          structuredResponse: {
+            status: "missing" as const,
+            reasoning: "Evaluation could not complete: recursion limit reached. The agent used too many exploration steps.",
+            evidence: [],
+          },
+        } as any;
+      }
 
       const metrics: EvaluationMetrics = {
         durationMs: Date.now() - startMs,
@@ -64,7 +78,7 @@ export class EvaluationAgent {
         explorer: explorer.metrics,
         estimatedCostUsd: 0,
       };
-      metrics.estimatedCostUsd = await estimateCost(metrics, this.provider.modelId);
+      metrics.estimatedCostUsd = await estimateCost(metrics, this.provider.modelId, this.provider.explorerModelId);
 
       return {
         skillName: skill.name,

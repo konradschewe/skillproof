@@ -17,18 +17,29 @@ export interface EvaluationMetrics {
 
 export async function estimateCost(
   metrics: EvaluationMetrics,
-  modelId: string,
+  evaluatorModelId: string,
+  explorerModelId: string,
   providerName = "anthropic"
 ): Promise<number> {
   try {
     const provider = await fetchModels(providerName);
-    // modelId may be "anthropic--claude-sonnet-4-5" or "claude-sonnet-4-5"
-    const normalized = modelId.replace(/^[^-]+-+-/, "");
-    const model = provider?.models?.[normalized] ?? provider?.models?.[modelId];
-    if (!model?.cost?.input || !model.cost.output) return fallbackCost(metrics);
-    const totalInput = metrics.evaluator.inputTokens + metrics.explorer.inputTokens;
-    const totalOutput = metrics.evaluator.outputTokens + metrics.explorer.outputTokens;
-    return (totalInput / 1_000_000) * model.cost.input + (totalOutput / 1_000_000) * model.cost.output;
+
+    const resolveModel = (modelId: string) => {
+      const normalized = modelId.replace(/^[^-]+-+-/, "");
+      return provider?.models?.[normalized] ?? provider?.models?.[modelId];
+    };
+
+    const evalModel = resolveModel(evaluatorModelId);
+    const exprModel = resolveModel(explorerModelId);
+
+    if (!evalModel?.cost?.input || !evalModel.cost.output || !exprModel?.cost?.input || !exprModel.cost.output) return fallbackCost(metrics);
+
+    return (
+      (metrics.evaluator.inputTokens / 1_000_000) * evalModel.cost.input +
+      (metrics.evaluator.outputTokens / 1_000_000) * evalModel.cost.output +
+      (metrics.explorer.inputTokens / 1_000_000) * exprModel.cost.input +
+      (metrics.explorer.outputTokens / 1_000_000) * exprModel.cost.output
+    );
   } catch {
     return fallbackCost(metrics);
   }

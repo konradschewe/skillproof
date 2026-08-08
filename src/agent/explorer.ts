@@ -2,6 +2,7 @@ import { z } from "zod";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { HumanMessage } from "@langchain/core/messages";
 import { createAgent, toolStrategy } from "langchain";
+import { GraphRecursionError } from "@langchain/langgraph";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import {
@@ -12,14 +13,25 @@ import {
 import { VerboseHandler } from "./verbose.js";
 import { MetricsHandler, type AgentMetrics } from "./metrics.js";
 
-const RECURSION_LIMIT = 40;
+const RECURSION_LIMIT = 15;
+
+class MessageAccumulatorHandler extends MetricsHandler {
+  name = "MessageAccumulatorHandler";
+  readonly toolResults: string[] = [];
+
+  handleToolEnd(output: string) {
+    if (output) this.toolResults.push(output);
+  }
+}
 
 export class ExplorerAgent {
-  readonly metricsHandler = new MetricsHandler();
+  readonly metricsHandler = new MessageAccumulatorHandler();
+  private exploring = false;
 
   constructor(
     private model: BaseChatModel,
     private tools: StructuredToolInterface[],
+    private repoPath: string,
     private verbose = false
   ) {}
 
@@ -28,33 +40,52 @@ export class ExplorerAgent {
   }
 
   async explore(question: string): Promise<string> {
-    const agent = createAgent({
-      model: this.model,
-      tools: this.tools,
-      systemPrompt: EXPLORER_SYSTEM_PROMPT,
-      responseFormat: toolStrategy(ExplorationSchema as any) as any,
-    });
+    // Prevent parallel calls — each answer must inform the next question
+    if (this.exploring) {
+      return JSON.stringify({
+        answer: "Another exploration is already in progress. Please wait for it to complete before asking a new question.",
+        confidence: "low" as const,
+        sources: [],
+      });
+    }
+    this.exploring = true;
+    try {
+      const agent = createAgent({
+        model: this.model,
+        tools: this.tools,
+        systemPrompt: EXPLORER_SYSTEM_PROMPT,
+        responseFormat: toolStrategy(ExplorationSchema as any) as any,
+      });
 
-    const callbacks = this.verbose
-      ? [new VerboseHandler("explorer"), this.metricsHandler]
-      : [this.metricsHandler];
+      const callbacks = this.verbose
+        ? [new VerboseHandler("explorer"), this.metricsHandler]
+        : [this.metricsHandler];
 
-    const result = await agent.invoke(
-      { messages: [new HumanMessage(buildExplorerUserPrompt(question))] },
-      { callbacks, recursionLimit: RECURSION_LIMIT } as any
-    );
-
-    return JSON.stringify(result.structuredResponse, null, 2);
+      const result = await agent.invoke(
+        { messages: [new HumanMessage(buildExplorerUserPrompt(question, this.repoPath))] },
+        { callbacks, recursionLimit: RECURSION_LIMIT } as any
+      );
+      return JSON.stringify(result.structuredResponse, null, 2);
+    } catch (err) {
+      if (!(err instanceof GraphRecursionError)) throw err;
+      return JSON.stringify({
+        answer: "Exploration incomplete: recursion limit reached before a definitive answer could be found. Partial evidence was gathered but may be unreliable.",
+        confidence: "low" as const,
+        sources: [],
+      });
+    } finally {
+      this.exploring = false;
+    }
   }
 
   asTool(): DynamicStructuredTool {
     return new DynamicStructuredTool({
       name: "explore_codebase",
       description:
-        "Ask a targeted question about the codebase. Returns relevant files and code snippets. Use for finding implementations, patterns, or specific constructs.",
+        "Ask a targeted question about the codebase. Returns a direct answer with confidence level and source files. Call one at a time — each answer informs the next question.",
       schema: z.object({
         question: z.string().describe(
-          "A specific question about the codebase, e.g. 'How are API errors handled in route handlers?'"
+          "A specific question about the codebase, e.g. 'Does main.py instantiate AgentCapabilities with an extensions= parameter?'"
         ),
       }),
       func: ({ question }) => this.explore(question),
