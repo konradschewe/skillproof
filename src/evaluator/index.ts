@@ -3,6 +3,7 @@ import { EvaluationAgent } from "../agent/index.js";
 import { FileCache } from "../cache/index.js";
 import { renderMarkdown, renderGitHubSummary } from "../reporter/index.js";
 import { createProvider } from "../providers/index.js";
+import { printSkillBanner } from "../agent/verbose.js";
 import type { ProviderType } from "../providers/types.js";
 import type { EvaluationReport, SkillEvaluationResult } from "./types.js";
 import { execSync } from "child_process";
@@ -52,7 +53,11 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
       continue;
     }
 
-    console.error(`  [eval]  ${skill.name}`);
+    if (verbose) {
+      printSkillBanner(skill.name, results.length + 1, filteredSkills.length);
+    } else {
+      console.error(`  [eval]  ${skill.name}`);
+    }
     const result = await agent.evaluate(skill, repoPath);
     if (result.metrics) {
       const m = result.metrics;
