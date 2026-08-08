@@ -7,7 +7,6 @@ import type { ProviderType } from "../providers/types.js";
 import type { EvaluationReport, SkillEvaluationResult } from "./types.js";
 import { execSync } from "child_process";
 import { writeFile } from "fs/promises";
-import { resolve } from "path";
 
 export interface EvaluatorOptions {
   skillsDir: string;
@@ -15,12 +14,14 @@ export interface EvaluatorOptions {
   provider: ProviderType;
   modelId: string;
   cacheDir: string;
+  filter?: string;
+  verbose?: boolean;
   outputFormat: "markdown" | "json" | "github-summary";
   outputFile?: string;
 }
 
 export async function runEvaluator(options: EvaluatorOptions): Promise<EvaluationReport> {
-  const { skillsDir, repoPath, provider, modelId, cacheDir, outputFormat, outputFile } = options;
+  const { skillsDir, repoPath, provider, modelId, cacheDir, filter, verbose, outputFormat, outputFile } = options;
 
   const cache = new FileCache(cacheDir);
   await cache.load();
@@ -28,18 +29,22 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
   const skillsRepoSha = getSkillsRepoSha(skillsDir);
 
   const skills = await discoverSkills(skillsDir);
-  if (skills.length === 0) {
-    throw new Error(`No SKILL.md files found in: ${skillsDir}`);
+  const filteredSkills = filter
+    ? skills.filter((s) => s.name.includes(filter))
+    : skills;
+
+  if (filteredSkills.length === 0) {
+    throw new Error(filter ? `No skills matching "${filter}" found in: ${skillsDir}` : `No SKILL.md files found in: ${skillsDir}`);
   }
 
-  console.error(`Found ${skills.length} skill(s).`);
+  console.error(`Found ${filteredSkills.length} skill(s).`);
 
   const llmProvider = createProvider(provider, modelId);
-  const agent = new EvaluationAgent(llmProvider);
+  const agent = new EvaluationAgent(llmProvider, verbose);
 
   const results: SkillEvaluationResult[] = [];
 
-  for (const skill of skills) {
+  for (const skill of filteredSkills) {
     const cached = cache.get(skill.name, skillsRepoSha);
     if (cached) {
       console.error(`  [cache] ${skill.name}`);

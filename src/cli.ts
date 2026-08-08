@@ -13,8 +13,10 @@ program
   .requiredOption("--skills-dir <path>", "Path to the directory containing SKILL.md files")
   .option("--repo-path <path>", "Path to the repository to evaluate", process.cwd())
   .option("--provider <type>", "LLM provider: anthropic or aicore", "anthropic")
-  .option("--model <id>", "Model ID to use", "claude-sonnet-5")
+  .option("--model <id>", "Model ID to use", "anthropic--claude-4.6-sonnet")
   .option("--cache-dir <path>", "Directory for caching results", ".skillproof-cache")
+  .option("--filter <substring>", "Only evaluate skills whose name contains this substring")
+  .option("--verbose", "Stream agent thinking and tool calls to stderr")
   .option("--output-format <format>", "Output format: markdown, json, github-summary", "markdown")
   .option("--output-file <path>", "Write output to file instead of stdout")
   .action(async (opts) => {
@@ -25,6 +27,8 @@ program
         provider: opts.provider as ProviderType,
         modelId: opts.model,
         cacheDir: resolve(opts.cacheDir),
+        filter: opts.filter,
+        verbose: opts.verbose ?? false,
         outputFormat: opts.outputFormat,
         outputFile: opts.outputFile ? resolve(opts.outputFile) : undefined,
       });

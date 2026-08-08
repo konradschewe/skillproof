@@ -11,6 +11,9 @@ export class AnthropicProvider implements LLMProvider {
     return new ChatAnthropic({
       model: this.modelId,
       apiKey: process.env.ANTHROPIC_API_KEY,
+      ...(process.env.ANTHROPIC_BASE_URL && {
+        anthropicApiUrl: process.env.ANTHROPIC_BASE_URL,
+      }),
     });
   }
 }
