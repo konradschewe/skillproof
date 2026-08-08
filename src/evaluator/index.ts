@@ -1,6 +1,5 @@
 import { discoverSkills } from "../skills/discover.js";
 import { EvaluationAgent } from "../agent/index.js";
-import { collectCodeContext } from "../agent/context.js";
 import { FileCache } from "../cache/index.js";
 import { renderMarkdown, renderGitHubSummary } from "../reporter/index.js";
 import { createProvider } from "../providers/index.js";
@@ -33,8 +32,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     throw new Error(`No SKILL.md files found in: ${skillsDir}`);
   }
 
-  console.error(`Found ${skills.length} skill(s). Collecting code context...`);
-  const codeContext = await collectCodeContext(repoPath);
+  console.error(`Found ${skills.length} skill(s).`);
 
   const llmProvider = createProvider(provider, modelId);
   const agent = new EvaluationAgent(llmProvider);
@@ -50,7 +48,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     }
 
     console.error(`  [eval]  ${skill.name}`);
-    const result = await agent.evaluate(skill, codeContext);
+    const result = await agent.evaluate(skill, repoPath);
     cache.set(skill.name, skillsRepoSha, result);
     results.push(result);
   }

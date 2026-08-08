@@ -1,14 +1,8 @@
-import type { SkillEvaluationResult } from "../evaluator/types.js";
-import type { Skill } from "../skills/types.js";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
 export type ProviderType = "anthropic" | "aicore";
 
-export interface EvaluationInput {
-  skill: Skill;
-  codeContext: string;
-}
-
 export interface LLMProvider {
   readonly type: ProviderType;
-  evaluate(input: EvaluationInput): Promise<SkillEvaluationResult>;
+  createModel(): BaseChatModel;
 }
