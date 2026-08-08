@@ -54,6 +54,15 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
 
     console.error(`  [eval]  ${skill.name}`);
     const result = await agent.evaluate(skill, repoPath);
+    if (result.metrics) {
+      const m = result.metrics;
+      const totalTokens = m.evaluator.inputTokens + m.evaluator.outputTokens + m.explorer.inputTokens + m.explorer.outputTokens;
+      console.error(
+        `          tokens=${totalTokens} (eval_in=${m.evaluator.inputTokens} eval_out=${m.evaluator.outputTokens}` +
+        ` expl_in=${m.explorer.inputTokens} expl_out=${m.explorer.outputTokens})` +
+        ` cost=$${m.estimatedCostUsd.toFixed(4)} duration=${(m.durationMs / 1000).toFixed(1)}s`
+      );
+    }
     cache.set(skill.name, skillsRepoSha, result);
     results.push(result);
   }

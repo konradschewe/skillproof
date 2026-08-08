@@ -5,7 +5,7 @@ import type { LLMProvider } from "./types.js";
 export class AnthropicProvider implements LLMProvider {
   readonly type = "anthropic" as const;
 
-  constructor(private modelId: string) {}
+  constructor(readonly modelId: string) {}
 
   createModel(): BaseChatModel {
     return new ChatAnthropic({

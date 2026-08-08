@@ -5,6 +5,7 @@ export interface SkillEvaluationResult {
   status: AdoptionStatus;
   reasoning: string;
   evidence: string[];
+  metrics?: import("../agent/metrics.js").EvaluationMetrics;
 }
 
 export interface EvaluationReport {

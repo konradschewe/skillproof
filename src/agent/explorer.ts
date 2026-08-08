@@ -10,15 +10,22 @@ import {
   ExplorationSchema,
 } from "./prompt.js";
 import { VerboseHandler } from "./verbose.js";
+import { MetricsHandler, type AgentMetrics } from "./metrics.js";
 
 const RECURSION_LIMIT = 40;
 
 export class ExplorerAgent {
+  readonly metricsHandler = new MetricsHandler();
+
   constructor(
     private model: BaseChatModel,
     private tools: StructuredToolInterface[],
     private verbose = false
   ) {}
+
+  get metrics(): AgentMetrics {
+    return this.metricsHandler.data;
+  }
 
   async explore(question: string): Promise<string> {
     const agent = createAgent({
@@ -28,13 +35,13 @@ export class ExplorerAgent {
       responseFormat: toolStrategy(ExplorationSchema as any) as any,
     });
 
-    const config = this.verbose
-      ? { callbacks: [new VerboseHandler("explorer")], recursionLimit: RECURSION_LIMIT }
-      : { recursionLimit: RECURSION_LIMIT };
+    const callbacks = this.verbose
+      ? [new VerboseHandler("explorer"), this.metricsHandler]
+      : [this.metricsHandler];
 
     const result = await agent.invoke(
       { messages: [new HumanMessage(buildExplorerUserPrompt(question))] },
-      config as any
+      { callbacks, recursionLimit: RECURSION_LIMIT } as any
     );
 
     return JSON.stringify(result.structuredResponse, null, 2);

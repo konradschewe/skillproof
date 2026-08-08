@@ -11,6 +11,7 @@ import { buildUserPrompt, EvaluationSchema, EVALUATOR_SYSTEM_PROMPT } from "./pr
 import { loadExcludePatterns, prepareExplorerTools } from "./tools.js";
 import { VerboseHandler } from "./verbose.js";
 import { ExplorerAgent } from "./explorer.js";
+import { MetricsHandler, estimateCost, type EvaluationMetrics } from "./metrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RECURSION_LIMIT = 15;
@@ -32,11 +33,14 @@ export class EvaluationAgent {
     });
 
     try {
+      const startMs = Date.now();
+
       const excludePatterns = await loadExcludePatterns(repoPath);
       const explorerTools = prepareExplorerTools(await mcp.getTools(), excludePatterns);
       const model = this.provider.createModel();
 
       const explorer = new ExplorerAgent(model, explorerTools, this.verbose);
+      const evaluatorMetricsHandler = new MetricsHandler();
 
       const evaluator = createAgent({
         model,
@@ -45,18 +49,27 @@ export class EvaluationAgent {
         responseFormat: toolStrategy(EvaluationSchema as any) as any,
       });
 
-      const config = this.verbose
-        ? { callbacks: [new VerboseHandler("evaluator")], recursionLimit: RECURSION_LIMIT }
-        : { recursionLimit: RECURSION_LIMIT };
+      const callbacks = this.verbose
+        ? [new VerboseHandler("evaluator"), evaluatorMetricsHandler]
+        : [evaluatorMetricsHandler];
 
       const result = await evaluator.invoke(
         { messages: [new HumanMessage(buildUserPrompt(skill))] },
-        config as any
+        { callbacks, recursionLimit: RECURSION_LIMIT } as any
       );
+
+      const metrics: EvaluationMetrics = {
+        durationMs: Date.now() - startMs,
+        evaluator: evaluatorMetricsHandler.data,
+        explorer: explorer.metrics,
+        estimatedCostUsd: 0,
+      };
+      metrics.estimatedCostUsd = await estimateCost(metrics, this.provider.modelId);
 
       return {
         skillName: skill.name,
         ...(result.structuredResponse as z.infer<typeof EvaluationSchema>),
+        metrics,
       };
     } finally {
       await mcp.close();
