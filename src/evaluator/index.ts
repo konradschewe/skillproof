@@ -1,7 +1,7 @@
 import { discoverSkills } from "../skills/discover.js";
 import { EvaluationAgent } from "../agent/index.js";
 import { FileCache } from "../cache/index.js";
-import { renderMarkdown, renderGitHubSummary } from "../reporter/index.js";
+import { renderMarkdown, renderGitHubSummary, renderHtml } from "../reporter/index.js";
 import { createProvider } from "../providers/index.js";
 import { printSkillBanner } from "../agent/verbose.js";
 import type { ProviderType } from "../providers/types.js";
@@ -17,7 +17,7 @@ export interface EvaluatorOptions {
   cacheDir: string;
   filter?: string;
   verbose?: boolean;
-  outputFormat: "markdown" | "json" | "github-summary";
+  outputFormat: "markdown" | "json" | "github-summary" | "html";
   outputFile?: string;
 }
 
@@ -86,6 +86,8 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
       ? JSON.stringify(report, null, 2)
       : outputFormat === "github-summary"
       ? renderGitHubSummary(report)
+      : outputFormat === "html"
+      ? renderHtml(report)
       : renderMarkdown(report);
 
   if (outputFile) {

@@ -17,7 +17,7 @@ program
   .option("--cache-dir <path>", "Directory for caching results", ".skillproof-cache")
   .option("--filter <substring>", "Only evaluate skills whose name contains this substring")
   .option("--verbose", "Stream agent thinking and tool calls to stderr")
-  .option("--output-format <format>", "Output format: markdown, json, github-summary", "markdown")
+  .option("--output-format <format>", "Output format: markdown, json, github-summary, html", "markdown")
   .option("--output-file <path>", "Write output to file instead of stdout")
   .action(async (opts) => {
     try {

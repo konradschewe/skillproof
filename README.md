@@ -36,7 +36,7 @@ skillproof \
 | `--provider` | LLM provider: `anthropic` or `aicore` | `anthropic` |
 | `--model` | Model ID | `claude-sonnet-5` |
 | `--cache-dir` | Directory for caching results | `.skillproof-cache` |
-| `--output-format` | `markdown`, `json`, or `github-summary` | `markdown` |
+| `--output-format` | `markdown`, `json`, `github-summary`, or `html` | `markdown` |
 | `--output-file` | Write output to file instead of stdout | — |
 
 ## Providers
@@ -61,6 +61,8 @@ Results are cached in `.skillproof-cache/` (gitignored) and keyed by skill name 
 
 ## GitHub Actions
 
+### Step Summary (always active)
+
 ```yaml
 - name: Run Skillproof
   run: |
@@ -74,6 +76,55 @@ Results are cached in `.skillproof-cache/` (gitignored) and keyed by skill name 
 ```
 
 Results are automatically written to the GitHub Actions step summary.
+
+### HTML Report on GitHub Pages (optional)
+
+Publish a standalone HTML report to GitHub Pages on a schedule. The report is a static snapshot of the latest evaluation — no server needed.
+
+```yaml
+# .github/workflows/skillproof.yml
+name: Skillproof
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday at 6am
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  skillproof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync skills
+        run: agpm sync
+
+      - name: Run Skillproof
+        run: |
+          npx skillproof \
+            --skills-dir .claude/plugins/sap-application-foundation-agent-skills/skills \
+            --provider anthropic \
+            --output-format html \
+            --output-file skillproof-report.html
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          include_files: skillproof-report.html
+          destination_dir: skillproof
+          keep_files: true
+```
+
+The report is published to `https://<owner>.github.io/<repo>/skillproof/skillproof-report.html`.
+
+> **Note:** GitHub Pages must be enabled for the repository (Settings → Pages → Source: Deploy from branch `gh-pages`). If your repo already uses Pages, the report is placed in the `/skillproof/` subdirectory to avoid conflicts.
 
 ## Output
 
