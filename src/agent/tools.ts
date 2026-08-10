@@ -38,7 +38,10 @@ const DEFAULT_EXCLUDES = DEFAULT_EXCLUDE_DIRS.flatMap((d) => [
 ]);
 
 const TOOLS_WITH_EXCLUDE = new Set(["search_files", "directory_tree"]);
-const MAX_TOOL_OUTPUT_CHARS = 20_000;
+// Listing tools return many short entries; read tools return file content
+const LISTING_TOOLS = new Set(["search_files", "directory_tree", "list_directory"]);
+const MAX_LISTING_OUTPUT_CHARS = 6_000;
+const MAX_READ_OUTPUT_CHARS = 12_000;
 
 export async function loadExcludePatterns(repoPath: string): Promise<string[]> {
   try {
@@ -54,6 +57,7 @@ export async function loadExcludePatterns(repoPath: string): Promise<string[]> {
 }
 
 function withOutputLimit(tool: StructuredToolInterface): StructuredToolInterface {
+  const maxChars = LISTING_TOOLS.has(tool.name) ? MAX_LISTING_OUTPUT_CHARS : MAX_READ_OUTPUT_CHARS;
   const original = tool.invoke.bind(tool);
   return Object.create(tool, {
     invoke: {
@@ -63,10 +67,12 @@ function withOutputLimit(tool: StructuredToolInterface): StructuredToolInterface
           typeof result === "string"
             ? result
             : (result as any)?.content ?? JSON.stringify(result);
-        if (typeof text === "string" && text.length > MAX_TOOL_OUTPUT_CHARS) {
+        if (typeof text === "string" && text.length > maxChars) {
+          const totalLines = text.split("\n").length;
+          const shownLines = text.slice(0, maxChars).split("\n").length;
           const truncated =
-            text.slice(0, MAX_TOOL_OUTPUT_CHARS) +
-            `\n\n[truncated at ${MAX_TOOL_OUTPUT_CHARS} chars]`;
+            text.slice(0, maxChars) +
+            `\n\n[truncated: showed ${shownLines} of ~${totalLines} lines. Use search_files to find specific content within this file.]`;
           return typeof result === "string"
             ? truncated
             : { ...result, content: truncated };
@@ -126,20 +132,7 @@ function withExcludePatterns(
     invoke: {
       value: async (input: unknown, config?: unknown) => {
         const patched = patchArgs(input, excludePatterns, tool.name === "search_files");
-        const result = await original(patched as any, config as any);
-        const text =
-          typeof result === "string"
-            ? result
-            : (result as any)?.content ?? JSON.stringify(result);
-        if (typeof text === "string" && text.length > MAX_TOOL_OUTPUT_CHARS) {
-          const truncated =
-            text.slice(0, MAX_TOOL_OUTPUT_CHARS) +
-            `\n\n[truncated at ${MAX_TOOL_OUTPUT_CHARS} chars]`;
-          return typeof result === "string"
-            ? truncated
-            : { ...result, content: truncated };
-        }
-        return result;
+        return original(patched as any, config as any);
       },
     },
   });
@@ -152,5 +145,5 @@ export function prepareExplorerTools(
   return tools
     .filter((t) => EXPLORER_TOOLS.has(t.name))
     .map((t) => withExcludePatterns(t, excludePatterns))
-    .map((t) => (TOOLS_WITH_EXCLUDE.has(t.name) ? t : withOutputLimit(t)));
+    .map((t) => withOutputLimit(t));
 }

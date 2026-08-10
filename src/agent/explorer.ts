@@ -13,14 +13,15 @@ import {
 import { VerboseHandler } from "./verbose.js";
 import { MetricsHandler, type AgentMetrics } from "./metrics.js";
 
-const RECURSION_LIMIT = 15;
+const RECURSION_LIMIT = 12;
 
 class MessageAccumulatorHandler extends MetricsHandler {
   name = "MessageAccumulatorHandler";
   readonly toolResults: string[] = [];
 
-  handleToolEnd(output: string) {
-    if (output) this.toolResults.push(output);
+  handleToolEnd(output: unknown) {
+    const text = typeof output === "string" ? output : (output as any)?.content ?? JSON.stringify(output);
+    if (text?.trim()) this.toolResults.push(text);
   }
 }
 
@@ -68,11 +69,17 @@ export class ExplorerAgent {
       return JSON.stringify(result.structuredResponse, null, 2);
     } catch (err) {
       if (!(err instanceof GraphRecursionError)) throw err;
-      return JSON.stringify({
-        answer: "Exploration incomplete: recursion limit reached before a definitive answer could be found. Partial evidence was gathered but may be unreliable.",
-        confidence: "low" as const,
-        sources: [],
-      });
+      console.warn(`  [warn]  explorer hit recursion limit (${RECURSION_LIMIT}) — summarizing partial findings with extra LLM call`);
+      const partialFindings = this.metricsHandler.toolResults
+        .filter((t: string) => t.trim().length > 0)
+        .join("\n---\n");
+      const structured = this.model.withStructuredOutput(ExplorationSchema);
+      const fallback = await structured.invoke(
+        `The following file contents were read before hitting the exploration limit. ` +
+        `Synthesize them into a structured answer for the original question: "${question}"\n\n` +
+        `Partial findings:\n${partialFindings || "none gathered"}`
+      );
+      return JSON.stringify(fallback, null, 2);
     } finally {
       this.exploring = false;
     }

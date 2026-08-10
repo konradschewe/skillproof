@@ -13,7 +13,6 @@ export interface EvaluatorOptions {
   skillsDir: string;
   repoPath: string;
   provider: ProviderType;
-  modelId: string;
   cacheDir: string;
   filter?: string;
   verbose?: boolean;
@@ -22,7 +21,7 @@ export interface EvaluatorOptions {
 }
 
 export async function runEvaluator(options: EvaluatorOptions): Promise<EvaluationReport> {
-  const { skillsDir, repoPath, provider, modelId, cacheDir, filter, verbose, outputFormat, outputFile } = options;
+  const { skillsDir, repoPath, provider, cacheDir, filter, verbose, outputFormat, outputFile } = options;
 
   const cache = new FileCache(cacheDir);
   await cache.load();
@@ -40,7 +39,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
 
   console.error(`Found ${filteredSkills.length} skill(s).`);
 
-  const llmProvider = createProvider(provider, modelId);
+  const llmProvider = createProvider(provider);
   const agent = new EvaluationAgent(llmProvider, verbose);
 
   const results: SkillEvaluationResult[] = [];

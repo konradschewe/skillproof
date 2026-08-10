@@ -13,7 +13,6 @@ program
   .requiredOption("--skills-dir <path>", "Path to the directory containing SKILL.md files")
   .option("--repo-path <path>", "Path to the repository to evaluate", process.cwd())
   .option("--provider <type>", "LLM provider: anthropic or aicore", "anthropic")
-  .option("--model <id>", "Model ID to use", "anthropic--claude-4.6-sonnet")
   .option("--cache-dir <path>", "Directory for caching results", ".skillproof-cache")
   .option("--filter <substring>", "Only evaluate skills whose name contains this substring")
   .option("--verbose", "Stream agent thinking and tool calls to stderr")
@@ -25,7 +24,6 @@ program
         skillsDir: resolve(opts.skillsDir),
         repoPath: resolve(opts.repoPath),
         provider: opts.provider as ProviderType,
-        modelId: opts.model,
         cacheDir: resolve(opts.cacheDir),
         filter: opts.filter,
         verbose: opts.verbose ?? false,

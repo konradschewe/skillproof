@@ -1,21 +1,31 @@
-import { z } from "zod";
 import { HumanMessage } from "@langchain/core/messages";
+import { GraphRecursionError } from "@langchain/langgraph";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { createAgent, toolStrategy } from "langchain";
-import { GraphRecursionError } from "@langchain/langgraph";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
+import { z } from "zod";
 import type { SkillEvaluationResult } from "../evaluator/types.js";
 import type { LLMProvider } from "../providers/types.js";
 import type { Skill } from "../skills/types.js";
+import { ExplorerAgent } from "./explorer.js";
+import { estimateCost, MetricsHandler, type EvaluationMetrics } from "./metrics.js";
 import { buildUserPrompt, EvaluationSchema, EVALUATOR_SYSTEM_PROMPT } from "./prompt.js";
 import { loadExcludePatterns, prepareExplorerTools } from "./tools.js";
 import { VerboseHandler } from "./verbose.js";
-import { ExplorerAgent } from "./explorer.js";
-import { MetricsHandler, estimateCost, type EvaluationMetrics } from "./metrics.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RECURSION_LIMIT = 15;
+
+class EvaluatorMetricsHandler extends MetricsHandler {
+  name = "EvaluatorMetricsHandler";
+  readonly explorerResults: string[] = [];
+
+  handleToolEnd(output: unknown) {
+    const text = typeof output === "string" ? output : (output as any)?.content ?? JSON.stringify(output);
+    if (text?.trim()) this.explorerResults.push(text);
+  }
+}
 
 export class EvaluationAgent {
   constructor(
@@ -42,7 +52,7 @@ export class EvaluationAgent {
 
       const explorerModel = this.provider.createExplorerModel();
       const explorer = new ExplorerAgent(explorerModel, explorerTools, repoPath, this.verbose);
-      const evaluatorMetricsHandler = new MetricsHandler();
+      const evaluatorMetricsHandler = new EvaluatorMetricsHandler();
 
       const evaluator = createAgent({
         model,
@@ -63,13 +73,16 @@ export class EvaluationAgent {
         );
       } catch (err) {
         if (!(err instanceof GraphRecursionError)) throw err;
-        result = {
-          structuredResponse: {
-            status: "missing" as const,
-            reasoning: "Evaluation could not complete: recursion limit reached. The agent used too many exploration steps.",
-            evidence: [],
-          },
-        } as any;
+        console.warn(`  [warn]  evaluator hit recursion limit (${RECURSION_LIMIT}) — summarizing partial findings with extra LLM call`);
+        const partialFindings = evaluatorMetricsHandler.explorerResults.join("\n---\n");
+        const structured = model.withStructuredOutput(EvaluationSchema);
+        const fallback = await structured.invoke(
+          `The following exploration results were gathered before hitting the evaluation limit. ` +
+          `Synthesize them into a compliance verdict for the skill: "${skill.name}"\n\n` +
+          `Skill definition:\n${buildUserPrompt(skill)}\n\n` +
+          `Exploration results:\n${partialFindings || "none gathered"}`
+        );
+        result = { structuredResponse: fallback } as any;
       }
 
       const metrics: EvaluationMetrics = {
