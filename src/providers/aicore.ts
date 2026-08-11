@@ -10,11 +10,21 @@ export class AICoreProvider implements LLMProvider {
   readonly modelId = EVALUATOR_MODEL_ID;
   readonly explorerModelId = EXPLORER_MODEL_ID;
 
+  private get resourceGroup(): string | undefined {
+    return process.env["AICORE_RESOURCE_GROUP"] || undefined;
+  }
+
   createModel(): BaseChatModel {
-    return new AzureOpenAiChatClient({ modelName: EVALUATOR_MODEL_ID }) as unknown as BaseChatModel;
+    return new AzureOpenAiChatClient({
+      modelName: EVALUATOR_MODEL_ID,
+      resourceGroup: this.resourceGroup,
+    }) as unknown as BaseChatModel;
   }
 
   createExplorerModel(): BaseChatModel {
-    return new AzureOpenAiChatClient({ modelName: EXPLORER_MODEL_ID }) as unknown as BaseChatModel;
+    return new AzureOpenAiChatClient({
+      modelName: EXPLORER_MODEL_ID,
+      resourceGroup: this.resourceGroup,
+    }) as unknown as BaseChatModel;
   }
 }
