@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepare": "tsup",
     "dev": "tsx src/cli.ts",
     "lint": "eslint .",
     "prettier": "prettier --check .",
