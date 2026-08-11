@@ -2,8 +2,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { GraphRecursionError } from "@langchain/langgraph";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { createAgent, toolStrategy } from "langchain";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { z } from "zod";
 import type { SkillEvaluationResult } from "../evaluator/types.js";
 import type { LLMProvider } from "../providers/types.js";
@@ -14,7 +13,6 @@ import { buildUserPrompt, EvaluationSchema, EVALUATOR_SYSTEM_PROMPT } from "./pr
 import { loadExcludePatterns, prepareExplorerTools } from "./tools.js";
 import { VerboseHandler } from "./verbose.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const RECURSION_LIMIT = 15;
 
 class EvaluatorMetricsHandler extends MetricsHandler {
@@ -34,9 +32,8 @@ export class EvaluationAgent {
   ) {}
 
   async evaluate(skill: Skill, repoPath: string): Promise<SkillEvaluationResult> {
-    const serverPath = resolve(
-      __dirname,
-      "../../node_modules/@modelcontextprotocol/server-filesystem/dist/index.js"
+    const serverPath = createRequire(import.meta.url).resolve(
+      "@modelcontextprotocol/server-filesystem/dist/index.js"
     );
 
     const mcp = new MultiServerMCPClient({
