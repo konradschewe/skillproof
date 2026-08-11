@@ -1,4 +1,4 @@
-import { AzureOpenAiChatClient } from "@sap-ai-sdk/langchain";
+import { OrchestrationClient } from "@sap-ai-sdk/langchain";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { LLMProvider } from "./types.js";
 
@@ -15,16 +15,18 @@ export class AICoreProvider implements LLMProvider {
   }
 
   createModel(): BaseChatModel {
-    return new AzureOpenAiChatClient({
-      modelName: EVALUATOR_MODEL_ID,
-      resourceGroup: this.resourceGroup,
-    }) as unknown as BaseChatModel;
+    return new OrchestrationClient(
+      { promptTemplating: { model: { name: EVALUATOR_MODEL_ID } } },
+      {},
+      this.resourceGroup ? { resourceGroup: this.resourceGroup } : undefined
+    ) as unknown as BaseChatModel;
   }
 
   createExplorerModel(): BaseChatModel {
-    return new AzureOpenAiChatClient({
-      modelName: EXPLORER_MODEL_ID,
-      resourceGroup: this.resourceGroup,
-    }) as unknown as BaseChatModel;
+    return new OrchestrationClient(
+      { promptTemplating: { model: { name: EXPLORER_MODEL_ID } } },
+      {},
+      this.resourceGroup ? { resourceGroup: this.resourceGroup } : undefined
+    ) as unknown as BaseChatModel;
   }
 }
