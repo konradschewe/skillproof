@@ -56,6 +56,7 @@ export async function loadExcludePatterns(repoPath: string): Promise<string[]> {
   }
 }
 
+
 function withOutputLimit(tool: StructuredToolInterface): StructuredToolInterface {
   const maxChars = LISTING_TOOLS.has(tool.name) ? MAX_LISTING_OUTPUT_CHARS : MAX_READ_OUTPUT_CHARS;
   const original = tool.invoke.bind(tool);

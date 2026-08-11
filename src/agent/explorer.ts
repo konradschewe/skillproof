@@ -13,7 +13,7 @@ import {
 import { VerboseHandler } from "./verbose.js";
 import { MetricsHandler, type AgentMetrics } from "./metrics.js";
 
-const RECURSION_LIMIT = 12;
+const RECURSION_LIMIT = 16;
 
 class MessageAccumulatorHandler extends MetricsHandler {
   name = "MessageAccumulatorHandler";

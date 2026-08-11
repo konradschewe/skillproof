@@ -32,6 +32,7 @@ Exploration strategy:
 3. Read only the files that are directly relevant to the question
 4. Be targeted: 3–5 focused tool calls is usually enough; stop when you have sufficient evidence
 5. Skip virtual environments, dependency folders, and plugin/template directories (.venv, node_modules, .claude, dist, build)
+6. Never repeat a tool call with the same arguments — results are cached, so a duplicate call wastes your turn
 
 Return a direct answer to the question with your confidence level and the source files that back it up.`;
 
