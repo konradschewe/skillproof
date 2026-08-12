@@ -1,7 +1,6 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { GraphRecursionError } from "@langchain/langgraph";
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
-import { createAgent, toolStrategy } from "langchain";
+import { countTokensApproximately, createAgent, summarizationMiddleware, toolStrategy } from "langchain";
 import { createRequire } from "module";
 import { z } from "zod";
 import type { SkillEvaluationResult } from "../evaluator/types.js";
@@ -13,7 +12,7 @@ import { buildUserPrompt, EvaluationSchema, EVALUATOR_SYSTEM_PROMPT } from "./pr
 import { loadExcludePatterns, prepareExplorerTools } from "./tools.js";
 import { VerboseHandler } from "./verbose.js";
 
-const RECURSION_LIMIT = 15;
+const SUMMARIZE_TRIGGER_TOKENS = 150_000;
 
 class EvaluatorMetricsHandler extends MetricsHandler {
   name = "EvaluatorMetricsHandler";
@@ -56,31 +55,24 @@ export class EvaluationAgent {
         tools: [explorer.asTool()],
         systemPrompt: EVALUATOR_SYSTEM_PROMPT,
         responseFormat: toolStrategy(EvaluationSchema as any) as any,
+        middleware: [
+          summarizationMiddleware({
+            model,
+            trigger: { tokens: SUMMARIZE_TRIGGER_TOKENS },
+            keep: { tokens: 15_000 },
+            tokenCounter: (messages) => countTokensApproximately(messages),
+          }),
+        ],
       });
 
       const callbacks = this.verbose
         ? [new VerboseHandler("evaluator"), evaluatorMetricsHandler]
         : [evaluatorMetricsHandler];
 
-      let result: Awaited<ReturnType<typeof evaluator.invoke>>;
-      try {
-        result = await evaluator.invoke(
-          { messages: [new HumanMessage(buildUserPrompt(skill))] },
-          { callbacks, recursionLimit: RECURSION_LIMIT } as any
-        );
-      } catch (err) {
-        if (!(err instanceof GraphRecursionError)) throw err;
-        console.warn(`  [warn]  evaluator hit recursion limit (${RECURSION_LIMIT}) — summarizing partial findings with extra LLM call`);
-        const partialFindings = evaluatorMetricsHandler.explorerResults.join("\n---\n");
-        const structured = model.withStructuredOutput(EvaluationSchema);
-        const fallback = await structured.invoke(
-          `The following exploration results were gathered before hitting the evaluation limit. ` +
-          `Synthesize them into a compliance verdict for the skill: "${skill.name}"\n\n` +
-          `Skill definition:\n${buildUserPrompt(skill)}\n\n` +
-          `Exploration results:\n${partialFindings || "none gathered"}`
-        );
-        result = { structuredResponse: fallback } as any;
-      }
+      const result = await evaluator.invoke(
+        { messages: [new HumanMessage(buildUserPrompt(skill))] },
+        { callbacks, recursionLimit: 1_000 } as any
+      );
 
       const metrics: EvaluationMetrics = {
         durationMs: Date.now() - startMs,
