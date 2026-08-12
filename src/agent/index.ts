@@ -8,7 +8,7 @@ import type { LLMProvider } from "../providers/types.js";
 import type { Skill } from "../skills/types.js";
 import { ExplorerAgent } from "./explorer.js";
 import { estimateCost, MetricsHandler, type EvaluationMetrics } from "./metrics.js";
-import { buildUserPrompt, EvaluationSchema, EVALUATOR_SYSTEM_PROMPT } from "./prompt.js";
+import { buildUserPrompt, buildEvaluatorSystemPrompt, EvaluationSchema } from "./prompt.js";
 import { loadExcludePatterns, prepareExplorerTools } from "./tools.js";
 import { VerboseHandler } from "./verbose.js";
 
@@ -27,7 +27,8 @@ class EvaluatorMetricsHandler extends MetricsHandler {
 export class EvaluationAgent {
   constructor(
     private provider: LLMProvider,
-    private verbose = false
+    private verbose = false,
+    private systemPrompt?: string
   ) {}
 
   async evaluate(skill: Skill, repoPath: string): Promise<SkillEvaluationResult> {
@@ -53,7 +54,7 @@ export class EvaluationAgent {
       const evaluator = createAgent({
         model,
         tools: [explorer.asTool()],
-        systemPrompt: EVALUATOR_SYSTEM_PROMPT,
+        systemPrompt: buildEvaluatorSystemPrompt(this.systemPrompt),
         responseFormat: toolStrategy(EvaluationSchema as any) as any,
         middleware: [
           summarizationMiddleware({

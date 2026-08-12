@@ -1,7 +1,7 @@
 import type { EvaluationReport } from "../evaluator/types.js";
 
-const statusIcon = (s: string) => (s === "adopted" ? "✅" : s === "partial" ? "⚠️" : "❌");
-const statusClass = (s: string) => (s === "adopted" ? "adopted" : s === "partial" ? "partial" : "missing");
+const statusIcon = (s: string) => s === "adopted" ? "✅" : s === "partial" ? "⚠️" : s === "not-applicable" ? "➖" : "❌";
+const statusClass = (s: string) => s === "adopted" ? "adopted" : s === "partial" ? "partial" : s === "not-applicable" ? "na" : "missing";
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const escAttr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/\n/g, "&#10;");
 
@@ -22,6 +22,7 @@ const CSS = `
   .stat.adopted .stat-value { color: #1a7f37; }
   .stat.partial .stat-value { color: #9a6700; }
   .stat.missing .stat-value { color: #cf222e; }
+  .stat.na .stat-value { color: #57606a; }
   .progress-bar { background: #d0d7de; border-radius: 4px; height: 8px; margin-bottom: 2rem; overflow: hidden; display: flex; }
   .progress-bar .adopted { background: #1a7f37; }
   .progress-bar .partial { background: #d4a72c; }
@@ -35,10 +36,12 @@ const CSS = `
   .badge.adopted { background: #dafbe1; color: #1a7f37; }
   .badge.partial { background: #fff8c5; color: #9a6700; }
   .badge.missing { background: #ffebe9; color: #cf222e; }
+  .badge.na { background: #f6f8fa; color: #57606a; }
   .card { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; border-left: 4px solid #d0d7de; }
   .card.adopted { border-left-color: #1a7f37; }
   .card.partial { border-left-color: #d4a72c; }
   .card.missing { border-left-color: #cf222e; }
+  .card.na { border-left-color: #d0d7de; }
   .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
   .card-icon { font-size: 1.1rem; }
   .reasoning { margin: 0 0 0.75rem; color: #57606a; font-size: 0.9rem; line-height: 1.5; }
@@ -116,7 +119,9 @@ export function renderHtml(report: EvaluationReport): string {
   const adopted = report.results.filter((r) => r.status === "adopted").length;
   const partial = report.results.filter((r) => r.status === "partial").length;
   const missing = report.results.filter((r) => r.status === "missing").length;
+  const na = report.results.filter((r) => r.status === "not-applicable").length;
   const total = report.results.length;
+  const scored = total - na;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -138,9 +143,10 @@ export function renderHtml(report: EvaluationReport): string {
     <div class="stat adopted"><div class="stat-value">${adopted}</div><div class="stat-label">Adopted</div></div>
     <div class="stat partial"><div class="stat-value">${partial}</div><div class="stat-label">Partial</div></div>
     <div class="stat missing"><div class="stat-value">${missing}</div><div class="stat-label">Missing</div></div>
+    ${na > 0 ? `<div class="stat na"><div class="stat-value">${na}</div><div class="stat-label">Not applicable</div></div>` : ""}
     <div class="stat"><div class="stat-value">${total}</div><div class="stat-label">Total skills</div></div>
   </div>
-  ${total > 0 ? `<div class="progress-bar"><div class="adopted" style="width:${(adopted / total) * 100}%"></div><div class="partial" style="width:${(partial / total) * 100}%"></div><div class="missing" style="width:${(missing / total) * 100}%"></div></div>` : ""}
+  ${scored > 0 ? `<div class="progress-bar"><div class="adopted" style="width:${(adopted / scored) * 100}%"></div><div class="partial" style="width:${(partial / scored) * 100}%"></div><div class="missing" style="width:${(missing / scored) * 100}%"></div></div>` : ""}
   <h2>Summary</h2>
   ${renderSummaryTable(report)}
   ${renderMetrics(report, total)}

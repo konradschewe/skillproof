@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Skill } from "../skills/types.js";
 
 export const EvaluationSchema = z.object({
-  status: z.enum(["adopted", "partial", "missing"]),
+  status: z.enum(["adopted", "partial", "missing", "not-applicable"]),
   reasoning: z.string(),
   evidence: z.array(z.string()),
 });
@@ -52,8 +52,14 @@ Classifications:
 - "adopted": The skill's requirements are clearly implemented
 - "partial": Some requirements are met but others are missing
 - "missing": The skill's requirements are not implemented
+- "not-applicable": The skill is intentionally irrelevant to this repository (e.g. an agent-specific skill evaluated against a shared library)
 
 Be specific in your reasoning and cite file paths as evidence.`;
+
+export function buildEvaluatorSystemPrompt(additionalContext?: string): string {
+  if (!additionalContext) return EVALUATOR_SYSTEM_PROMPT;
+  return `${EVALUATOR_SYSTEM_PROMPT}\n\n## Additional Context\n\n${additionalContext}`;
+}
 
 export function buildUserPrompt(skill: Skill): string {
   return `## Skill Definition (${skill.name})

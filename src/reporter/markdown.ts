@@ -1,6 +1,6 @@
 import type { EvaluationReport } from "../evaluator/types.js";
 
-const statusIcon = (s: string) => (s === "adopted" ? "✅" : s === "partial" ? "⚠️" : "❌");
+const statusIcon = (s: string) => s === "adopted" ? "✅" : s === "partial" ? "⚠️" : s === "not-applicable" ? "➖" : "❌";
 
 function metricsSection(report: EvaluationReport): string {
   const evaluated = report.results.filter((r) => r.metrics);

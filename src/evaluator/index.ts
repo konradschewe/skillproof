@@ -15,13 +15,14 @@ export interface EvaluatorOptions {
   provider: ProviderType;
   cacheDir: string;
   filter?: string;
+  systemPrompt?: string;
   verbose?: boolean;
   outputFormat: "markdown" | "json" | "github-summary" | "html";
   outputFile?: string;
 }
 
 export async function runEvaluator(options: EvaluatorOptions): Promise<EvaluationReport> {
-  const { skillsDir, repoPath, provider, cacheDir, filter, verbose, outputFormat, outputFile } = options;
+  const { skillsDir, repoPath, provider, cacheDir, filter, systemPrompt, verbose, outputFormat, outputFile } = options;
 
   const cache = new FileCache(cacheDir);
   await cache.load();
@@ -40,7 +41,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
   console.error(`Found ${filteredSkills.length} skill(s).`);
 
   const llmProvider = createProvider(provider);
-  const agent = new EvaluationAgent(llmProvider, verbose);
+  const agent = new EvaluationAgent(llmProvider, verbose, systemPrompt);
 
   const results: SkillEvaluationResult[] = [];
 

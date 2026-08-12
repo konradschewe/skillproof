@@ -1,4 +1,4 @@
-export type AdoptionStatus = "adopted" | "partial" | "missing";
+export type AdoptionStatus = "adopted" | "partial" | "missing" | "not-applicable";
 
 export interface SkillEvaluationResult {
   skillName: string;
