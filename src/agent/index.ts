@@ -28,7 +28,8 @@ export class EvaluationAgent {
   constructor(
     private provider: LLMProvider,
     private verbose = false,
-    private systemPrompt?: string
+    private systemPrompt?: string,
+    private strict?: boolean
   ) {}
 
   async evaluate(skill: Skill, repoPath: string): Promise<SkillEvaluationResult> {
@@ -54,7 +55,7 @@ export class EvaluationAgent {
       const evaluator = createAgent({
         model,
         tools: [explorer.asTool()],
-        systemPrompt: buildEvaluatorSystemPrompt(this.systemPrompt),
+        systemPrompt: buildEvaluatorSystemPrompt(this.systemPrompt, this.strict),
         responseFormat: toolStrategy(EvaluationSchema as any) as any,
         middleware: [
           summarizationMiddleware({

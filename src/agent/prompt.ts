@@ -56,9 +56,15 @@ Classifications:
 
 Be specific in your reasoning and cite file paths as evidence.`;
 
-export function buildEvaluatorSystemPrompt(additionalContext?: string): string {
-  if (!additionalContext) return EVALUATOR_SYSTEM_PROMPT;
-  return `${EVALUATOR_SYSTEM_PROMPT}\n\n## Additional Context\n\n${additionalContext}`;
+export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: boolean): string {
+  const modeInstruction = strict
+    ? "\n\nEvaluate strictly: the exact APIs, patterns, and file locations described in the skill definition must be present. Functionally equivalent alternatives do not count as adoption."
+    : "\n\nEvaluate functional intent: an implementation that achieves the same observable result as the pattern described in the skill counts as adoption. Focus on whether the behavior is present, not whether the exact skill terms match.";
+
+  let prompt = EVALUATOR_SYSTEM_PROMPT + modeInstruction;
+
+  if (!additionalContext) return prompt;
+  return `${prompt}\n\n## Additional Context\n\n${additionalContext}`;
 }
 
 export function buildUserPrompt(skill: Skill): string {
