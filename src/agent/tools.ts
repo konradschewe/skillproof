@@ -76,7 +76,7 @@ function withOutputLimit(tool: StructuredToolInterface): StructuredToolInterface
           const shownLines = text.slice(0, maxChars).split("\n").length;
           const truncated =
             text.slice(0, maxChars) +
-            `\n\n[truncated: showed ${shownLines} of ~${totalLines} lines. Use search_files to find specific content within this file.]`;
+            `\n\n[truncated: showed ${shownLines} of ~${totalLines} lines. Use grep_files to search for specific content within this file.]`;
           return typeof result === "string"
             ? truncated
             : { ...result, content: truncated };
@@ -164,7 +164,7 @@ export function createGrepTool(repoPath: string, excludePatterns: string[]): Str
   return new DynamicStructuredTool({
     name: "grep_files",
     description:
-      "Search for a keyword, string, or regex pattern within file contents. Use this to find where a specific function, import, class name, or variable is used across the codebase. The query is treated as a regex — use alternation (e.g. 'foo|bar') to search for multiple terms at once. Returns file path, line number, and matching line for each match.",
+      "Search for a keyword, string, or regex pattern within file contents. Use this to find where a specific function, import, class name, or variable is used across the codebase. The query is treated as a regex — use alternation (e.g. 'foo|bar') to search for multiple terms at once. Returns file path, line number, and matching line for each match. Use context_lines to include surrounding lines for better code understanding.",
     schema: z.object({
       path: z.string().describe("Absolute path of the directory to search in"),
       query: z.string().describe("String or regex pattern to search for within file contents. Supports alternation (e.g. 'context_overlay|GenAIOperation|add_span_attribute')."),
@@ -174,13 +174,24 @@ export function createGrepTool(repoPath: string, excludePatterns: string[]): Str
         .describe(
           "Glob pattern to restrict which files to search (e.g. '**/*.py'). Defaults to common source file types."
         ),
+      context_lines: z
+        .number()
+        .int()
+        .min(0)
+        .max(10)
+        .optional()
+        .describe("Number of lines to show before and after each match (like grep -C). Defaults to 0."),
+      ignore_case: z
+        .boolean()
+        .optional()
+        .describe("If true, match case-insensitively. Defaults to false."),
     }),
-    func: async ({ path: searchPath, query, file_pattern }) => {
+    func: async ({ path: searchPath, query, file_pattern, context_lines = 0, ignore_case = false }) => {
       const pattern = file_pattern ?? "**/*.{py,ts,js,tsx,jsx,json,yaml,yml,toml,md,txt,sh,cfg,ini}";
 
       let regex: RegExp;
       try {
-        regex = new RegExp(query);
+        regex = new RegExp(query, ignore_case ? "i" : "");
       } catch {
         return `Error: invalid regex pattern "${query}"`;
       }
@@ -217,7 +228,17 @@ export function createGrepTool(repoPath: string, excludePatterns: string[]): Str
 
         for (let i = 0; i < lines.length; i++) {
           if (regex.test(lines[i])) {
-            matches.push(`${relFile}:${i + 1}: ${lines[i].trim()}`);
+            if (context_lines > 0) {
+              const start = Math.max(0, i - context_lines);
+              const end = Math.min(lines.length - 1, i + context_lines);
+              for (let j = start; j <= end; j++) {
+                const marker = j === i ? ">" : " ";
+                matches.push(`${relFile}:${j + 1}:${marker} ${lines[j].trim()}`);
+              }
+              matches.push("--");
+            } else {
+              matches.push(`${relFile}:${i + 1}: ${lines[i].trim()}`);
+            }
             if (matches.length >= MAX_GREP_MATCHES) break;
           }
         }
