@@ -18,12 +18,13 @@ export interface EvaluatorOptions {
   systemPrompt?: string;
   strict?: boolean;
   verbose?: boolean;
+  concurrency?: number;
   outputFormat: "markdown" | "json" | "github-summary" | "html";
   outputFile?: string;
 }
 
 export async function runEvaluator(options: EvaluatorOptions): Promise<EvaluationReport> {
-  const { skillsDir, repoPath, provider, cacheDir, filter, systemPrompt, strict, verbose, outputFormat, outputFile } = options;
+  const { skillsDir, repoPath, provider, cacheDir, filter, systemPrompt, strict, verbose, concurrency = 1, outputFormat, outputFile } = options;
 
   const cache = new FileCache(cacheDir);
   await cache.load();
@@ -44,34 +45,41 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
   const llmProvider = createProvider(provider);
   const agent = new EvaluationAgent(llmProvider, verbose, systemPrompt, strict);
 
-  const results: SkillEvaluationResult[] = [];
+  const results: SkillEvaluationResult[] = new Array(filteredSkills.length);
+  let nextIndex = 0;
 
-  for (const skill of filteredSkills) {
-    const cached = cache.get(skill.name, skillsRepoSha);
-    if (cached) {
-      console.error(`  [cache] ${skill.name}`);
-      results.push(cached.result as SkillEvaluationResult);
-      continue;
-    }
+  const evaluateOne = async () => {
+    while (nextIndex < filteredSkills.length) {
+      const i = nextIndex++;
+      const skill = filteredSkills[i];
+      const cached = cache.get(skill.name, skillsRepoSha);
+      if (cached) {
+        console.error(`  [cache] ${skill.name}`);
+        results[i] = cached.result as SkillEvaluationResult;
+        continue;
+      }
 
-    if (verbose) {
-      printSkillBanner(skill.name, results.length + 1, filteredSkills.length);
-    } else {
-      console.error(`  [eval]  ${skill.name}`);
+      if (verbose) {
+        printSkillBanner(skill.name, i + 1, filteredSkills.length);
+      } else {
+        console.error(`  [eval]  ${skill.name}`);
+      }
+      const result = await agent.evaluate(skill, repoPath);
+      if (result.metrics) {
+        const m = result.metrics;
+        const totalTokens = m.evaluator.inputTokens + m.evaluator.outputTokens + m.explorer.inputTokens + m.explorer.outputTokens;
+        console.error(
+          `          tokens=${totalTokens} (eval_in=${m.evaluator.inputTokens} eval_out=${m.evaluator.outputTokens}` +
+          ` expl_in=${m.explorer.inputTokens} expl_out=${m.explorer.outputTokens})` +
+          ` cost=$${m.estimatedCostUsd.toFixed(4)} duration=${(m.durationMs / 1000).toFixed(1)}s`
+        );
+      }
+      cache.set(skill.name, skillsRepoSha, result);
+      results[i] = result;
     }
-    const result = await agent.evaluate(skill, repoPath);
-    if (result.metrics) {
-      const m = result.metrics;
-      const totalTokens = m.evaluator.inputTokens + m.evaluator.outputTokens + m.explorer.inputTokens + m.explorer.outputTokens;
-      console.error(
-        `          tokens=${totalTokens} (eval_in=${m.evaluator.inputTokens} eval_out=${m.evaluator.outputTokens}` +
-        ` expl_in=${m.explorer.inputTokens} expl_out=${m.explorer.outputTokens})` +
-        ` cost=$${m.estimatedCostUsd.toFixed(4)} duration=${(m.durationMs / 1000).toFixed(1)}s`
-      );
-    }
-    cache.set(skill.name, skillsRepoSha, result);
-    results.push(result);
-  }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, filteredSkills.length) }, evaluateOne));
 
   await cache.save();
 

@@ -17,6 +17,7 @@ program
   .option("--filter <substring>", "Only evaluate skills whose name contains this substring")
   .option("--system-prompt <text>", "Append additional context to the evaluator's system prompt. Use this to describe repo-specific architecture that affects skill evaluation (e.g. 'this is a shared library, not a concrete agent').")
   .option("--strict", "Require exact API names and patterns as specified in the skill definition. By default, functionally equivalent implementations are accepted (e.g. a lower-level API that achieves the same result as a convenience wrapper counts as adoption).")
+  .option("--concurrency <number>", "Number of skills to evaluate in parallel", "1")
   .option("--verbose", "Stream agent thinking and tool calls to stderr")
   .option("--output-format <format>", "Output format: markdown, json, github-summary, html", "markdown")
   .option("--output-file <path>", "Write output to file instead of stdout")
@@ -30,6 +31,7 @@ program
         filter: opts.filter,
         systemPrompt: opts.systemPrompt,
         strict: opts.strict ?? false,
+        concurrency: parseInt(opts.concurrency, 10),
         verbose: opts.verbose ?? false,
         outputFormat: opts.outputFormat,
         outputFile: opts.outputFile ? resolve(opts.outputFile) : undefined,
