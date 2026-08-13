@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Skill } from "../skills/types.js";
 
 export const EvaluationSchema = z.object({
-  status: z.enum(["adopted", "partial", "missing", "not-applicable"]),
+  status: z.enum(["adopted", "divergent", "partial", "missing", "not-applicable"]),
   reasoning: z.string(),
   evidence: z.array(z.string()),
 });
@@ -51,7 +51,8 @@ IMPORTANT: Call explore_codebase one at a time, never in parallel. Each answer i
 
 Classifications:
 - "adopted": The skill's requirements are clearly implemented
-- "partial": Some requirements are met but others are missing
+- "divergent": All observable behaviors are present, but via a different API or pattern than the skill prescribes (e.g. a lower-level call that replaces a convenience wrapper)
+- "partial": Some required behaviors are genuinely absent — not just implemented differently
 - "missing": The skill's requirements are not implemented
 - "not-applicable": The skill is intentionally irrelevant to this repository (e.g. an agent-specific skill evaluated against a shared library)
 
@@ -60,7 +61,7 @@ Be specific in your reasoning and cite file paths as evidence.`;
 export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: boolean): string {
   const modeInstruction = strict
     ? "\n\nEvaluate strictly: the exact APIs, patterns, and file locations described in the skill definition must be present. Functionally equivalent alternatives do not count as adoption."
-    : "\n\nEvaluate functional intent: an implementation that achieves the same observable result as the pattern described in the skill counts as adoption. Focus on whether the behavior is present, not whether the exact skill terms match.";
+    : "\n\nEvaluate functional intent: focus on whether the observable behavior is present, not whether the exact API names match. If all behaviors are present but via a different API or pattern than prescribed, rate 'divergent' — not 'partial'. Only rate 'partial' when an observable behavior is genuinely absent.";
 
   let prompt = EVALUATOR_SYSTEM_PROMPT + modeInstruction;
 
