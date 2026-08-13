@@ -1,6 +1,6 @@
 import type { EvaluationReport } from "../evaluator/types.js";
 
-const statusIcon = (s: string) => s === "adopted" ? "✅" : s === "divergent" ? "🔀" : s === "partial" ? "⚠️" : s === "not-applicable" ? "➖" : "❌";
+const statusIcon = (s: string) => s === "adopted" ? "✅" : s === "divergent" ? "🔵" : s === "partial" ? "⚠️" : s === "not-applicable" ? "➖" : "❌";
 
 function metricsSection(report: EvaluationReport): string {
   const evaluated = report.results.filter((r) => r.metrics);
@@ -30,11 +30,12 @@ export function renderMarkdown(report: EvaluationReport): string {
     .join("\n");
 
   const details = report.results
-    .map(
-      (r) =>
-        `### ${statusIcon(r.status)} ${r.skillName}\n\n**Status:** ${r.status}\n\n**Reasoning:** ${r.reasoning}\n\n` +
-        (r.evidence.length > 0 ? `**Evidence:**\n${r.evidence.map((e) => `- ${e}`).join("\n")}` : "")
-    )
+    .map((r) => {
+      const evidenceBlock = r.evidence.length > 0
+        ? `\n<details>\n<summary><strong>Evidence</strong> (${r.evidence.length} item${r.evidence.length !== 1 ? "s" : ""})</summary>\n\n${r.evidence.map((e) => `- \`${e}\``).join("\n")}\n\n</details>`
+        : "";
+      return `### ${statusIcon(r.status)} ${r.skillName}\n\n**Status:** ${r.status}\n\n${r.reasoning}${evidenceBlock}`;
+    })
     .join("\n\n---\n\n");
 
   return `# Skillproof Report\n\n**Repository:** ${report.repoPath}\n**Skills Directory:** ${report.skillsDir}\n**Evaluated At:** ${report.evaluatedAt}\n\n## Summary\n\n| Skill | Status |\n|-------|--------|\n${summary}\n${metricsSection(report)}\n## Details\n\n${details}\n`;
