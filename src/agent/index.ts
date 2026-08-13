@@ -9,7 +9,7 @@ import type { Skill } from "../skills/types.js";
 import { ExplorerAgent } from "./explorer.js";
 import { estimateCost, MetricsHandler, type EvaluationMetrics } from "./metrics.js";
 import { buildUserPrompt, buildEvaluatorSystemPrompt, EvaluationSchema } from "./prompt.js";
-import { loadExcludePatterns, prepareExplorerTools } from "./tools.js";
+import { loadExcludePatterns, prepareExplorerTools, createGrepTool } from "./tools.js";
 import { VerboseHandler } from "./verbose.js";
 
 const SUMMARIZE_TRIGGER_TOKENS = 150_000;
@@ -45,7 +45,10 @@ export class EvaluationAgent {
       const startMs = Date.now();
 
       const excludePatterns = await loadExcludePatterns(repoPath);
-      const explorerTools = prepareExplorerTools(await mcp.getTools(), excludePatterns);
+      const explorerTools = [
+        ...prepareExplorerTools(await mcp.getTools(), excludePatterns),
+        createGrepTool(repoPath, excludePatterns),
+      ];
       const model = this.provider.createModel();
 
       const explorerModel = this.provider.createExplorerModel();

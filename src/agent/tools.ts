@@ -1,6 +1,9 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
+import { DynamicStructuredTool } from "@langchain/core/tools";
 import { readFile } from "fs/promises";
-import { join } from "path";
+import { join, relative } from "path";
+import { glob } from "glob";
+import { z } from "zod";
 
 export const EXPLORER_TOOLS = new Set([
   "read_file",
@@ -147,4 +150,75 @@ export function prepareExplorerTools(
     .filter((t) => EXPLORER_TOOLS.has(t.name))
     .map((t) => withExcludePatterns(t, excludePatterns))
     .map((t) => withOutputLimit(t));
+}
+
+const BINARY_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".ico", ".webp",
+  ".woff", ".woff2", ".ttf", ".eot",
+  ".pdf", ".zip", ".gz", ".tar",
+  ".pyc", ".pyo", ".so", ".dylib", ".dll",
+]);
+const MAX_GREP_MATCHES = 100;
+
+export function createGrepTool(repoPath: string, excludePatterns: string[]): StructuredToolInterface {
+  return new DynamicStructuredTool({
+    name: "grep_files",
+    description:
+      "Search for a keyword or string within file contents. Use this to find where a specific function, import, class name, or variable is used across the codebase. Returns file path, line number, and matching line for each match.",
+    schema: z.object({
+      path: z.string().describe("Absolute path of the directory to search in"),
+      query: z.string().describe("String to search for within file contents"),
+      file_pattern: z
+        .string()
+        .optional()
+        .describe(
+          "Glob pattern to restrict which files to search (e.g. '**/*.py'). Defaults to common source file types."
+        ),
+    }),
+    func: async ({ path: searchPath, query, file_pattern }) => {
+      const pattern = file_pattern ?? "**/*.{py,ts,js,tsx,jsx,json,yaml,yml,toml,md,txt,sh,cfg,ini}";
+
+      let files: string[];
+      try {
+        files = await glob(pattern, {
+          cwd: searchPath,
+          ignore: excludePatterns,
+          absolute: true,
+          nodir: true,
+        });
+      } catch {
+        return `Error: could not search in path "${searchPath}"`;
+      }
+
+      const matches: string[] = [];
+
+      for (const file of files) {
+        if (matches.length >= MAX_GREP_MATCHES) break;
+
+        const ext = file.slice(file.lastIndexOf("."));
+        if (BINARY_EXTENSIONS.has(ext)) continue;
+
+        let content: string;
+        try {
+          content = await readFile(file, "utf-8");
+        } catch {
+          continue;
+        }
+
+        const lines = content.split("\n");
+        const relFile = relative(repoPath, file);
+
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes(query)) {
+            matches.push(`${relFile}:${i + 1}: ${lines[i].trim()}`);
+            if (matches.length >= MAX_GREP_MATCHES) break;
+          }
+        }
+      }
+
+      if (matches.length === 0) return `No matches found for "${query}" in ${searchPath}`;
+      const suffix = matches.length >= MAX_GREP_MATCHES ? `\n[truncated at ${MAX_GREP_MATCHES} matches]` : "";
+      return matches.join("\n") + suffix;
+    },
+  });
 }
