@@ -164,10 +164,10 @@ export function createGrepTool(repoPath: string, excludePatterns: string[]): Str
   return new DynamicStructuredTool({
     name: "grep_files",
     description:
-      "Search for a keyword or string within file contents. Use this to find where a specific function, import, class name, or variable is used across the codebase. Returns file path, line number, and matching line for each match.",
+      "Search for a keyword, string, or regex pattern within file contents. Use this to find where a specific function, import, class name, or variable is used across the codebase. The query is treated as a regex — use alternation (e.g. 'foo|bar') to search for multiple terms at once. Returns file path, line number, and matching line for each match.",
     schema: z.object({
       path: z.string().describe("Absolute path of the directory to search in"),
-      query: z.string().describe("String to search for within file contents"),
+      query: z.string().describe("String or regex pattern to search for within file contents. Supports alternation (e.g. 'context_overlay|GenAIOperation|add_span_attribute')."),
       file_pattern: z
         .string()
         .optional()
@@ -177,6 +177,13 @@ export function createGrepTool(repoPath: string, excludePatterns: string[]): Str
     }),
     func: async ({ path: searchPath, query, file_pattern }) => {
       const pattern = file_pattern ?? "**/*.{py,ts,js,tsx,jsx,json,yaml,yml,toml,md,txt,sh,cfg,ini}";
+
+      let regex: RegExp;
+      try {
+        regex = new RegExp(query);
+      } catch {
+        return `Error: invalid regex pattern "${query}"`;
+      }
 
       let files: string[];
       try {
@@ -209,7 +216,7 @@ export function createGrepTool(repoPath: string, excludePatterns: string[]): Str
         const relFile = relative(repoPath, file);
 
         for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes(query)) {
+          if (regex.test(lines[i])) {
             matches.push(`${relFile}:${i + 1}: ${lines[i].trim()}`);
             if (matches.length >= MAX_GREP_MATCHES) break;
           }
