@@ -1,4 +1,5 @@
-export type AdoptionStatus = "adopted" | "divergent" | "partial" | "missing" | "not-applicable";
+export const ADOPTION_STATUSES = ["adopted", "divergent", "partial", "missing", "not-applicable"] as const;
+export type AdoptionStatus = (typeof ADOPTION_STATUSES)[number];
 
 export interface SkillEvaluationResult {
   skillName: string;

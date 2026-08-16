@@ -1,6 +1,7 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 
-export type ProviderType = "anthropic" | "aicore";
+export const PROVIDER_TYPES = ["anthropic", "aicore"] as const;
+export type ProviderType = (typeof PROVIDER_TYPES)[number];
 
 export interface LLMProvider {
   readonly type: ProviderType;
