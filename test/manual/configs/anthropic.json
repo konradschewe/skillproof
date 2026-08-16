@@ -1,0 +1,8 @@
+{
+  "skillsDir": "../skills",
+  "repoPath": "../fixture-repo",
+  "provider": "anthropic",
+  "outputFormat": "markdown",
+  "verbose": true,
+  "concurrency": 1
+}

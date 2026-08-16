@@ -12,7 +12,8 @@
     "dev": "tsx src/cli.ts",
     "lint": "eslint .",
     "prettier": "prettier --check .",
-    "prettier:fix": "prettier --write ."
+    "prettier:fix": "prettier --write .",
+    "test:manual": "bash test/manual/run.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
