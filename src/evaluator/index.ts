@@ -2,10 +2,10 @@ import { discoverSkills } from "../skills/discover.js";
 import { EvaluationAgent } from "../agent/index.js";
 import { FileCache } from "../cache/index.js";
 import { createProvider } from "../providers/index.js";
-import { printSkillBanner } from "../agent/verbose.js";
+import { printSkillBanner } from "../agent/verbose/index.js";
+import { getSkillsRepoSha } from "../utils/git.js";
 import type { ProviderType } from "../providers/types.js";
 import type { EvaluationReport, SkillEvaluationResult } from "./types.js";
-import { execSync } from "child_process";
 
 export interface EvaluatorOptions {
   skillsDir: string;
@@ -82,20 +82,5 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     await cache.save();
   }
 
-  const report: EvaluationReport = {
-    repoPath,
-    skillsDir,
-    evaluatedAt: new Date().toISOString(),
-    results,
-  };
-
-  return report;
-}
-
-function getSkillsRepoSha(skillsDir: string): string {
-  try {
-    return execSync("git rev-parse HEAD", { cwd: skillsDir, encoding: "utf-8" }).trim();
-  } catch {
-    return "unknown";
-  }
+  return { repoPath, skillsDir, evaluatedAt: new Date().toISOString(), results };
 }

@@ -5,25 +5,12 @@ import { createAgent, toolStrategy } from "langchain";
 import { GraphRecursionError } from "@langchain/langgraph";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { StructuredToolInterface } from "@langchain/core/tools";
-import {
-  buildExplorerUserPrompt,
-  EXPLORER_SYSTEM_PROMPT,
-  ExplorationSchema,
-} from "./prompt.js";
-import { VerboseHandler } from "./verbose.js";
-import { MetricsHandler, type AgentMetrics } from "./metrics.js";
+import { ExplorationSchema } from "./schemas.js";
+import { buildExplorerUserPrompt, EXPLORER_SYSTEM_PROMPT } from "./prompts.js";
+import { VerboseHandler } from "./verbose/index.js";
+import { MessageAccumulatorHandler, type AgentMetrics } from "./metrics.js";
 
 const RECURSION_LIMIT = 16;
-
-class MessageAccumulatorHandler extends MetricsHandler {
-  name = "MessageAccumulatorHandler";
-  readonly toolResults: string[] = [];
-
-  handleToolEnd(output: unknown) {
-    const text = typeof output === "string" ? output : (output as any)?.content ?? JSON.stringify(output);
-    if (text?.trim()) this.toolResults.push(text);
-  }
-}
 
 export class ExplorerAgent {
   readonly metricsHandler = new MessageAccumulatorHandler();

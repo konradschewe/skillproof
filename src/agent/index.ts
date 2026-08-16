@@ -7,22 +7,14 @@ import type { SkillEvaluationResult } from "../evaluator/types.js";
 import type { LLMProvider } from "../providers/types.js";
 import type { Skill } from "../skills/types.js";
 import { ExplorerAgent } from "./explorer.js";
-import { estimateCost, MetricsHandler, type EvaluationMetrics } from "./metrics.js";
-import { buildUserPrompt, buildEvaluatorSystemPrompt, EvaluationSchema } from "./prompt.js";
-import { loadExcludePatterns, prepareExplorerTools, createGrepTool } from "./tools.js";
-import { VerboseHandler } from "./verbose.js";
+import { EvaluatorMetricsHandler, type EvaluationMetrics } from "./metrics.js";
+import { estimateCost } from "./cost.js";
+import { EvaluationSchema } from "./schemas.js";
+import { buildUserPrompt, buildEvaluatorSystemPrompt } from "./prompts.js";
+import { loadExcludePatterns, prepareExplorerTools, createGrepTool } from "./tools/index.js";
+import { VerboseHandler } from "./verbose/index.js";
 
 const SUMMARIZE_TRIGGER_TOKENS = 150_000;
-
-class EvaluatorMetricsHandler extends MetricsHandler {
-  name = "EvaluatorMetricsHandler";
-  readonly explorerResults: string[] = [];
-
-  handleToolEnd(output: unknown) {
-    const text = typeof output === "string" ? output : (output as any)?.content ?? JSON.stringify(output);
-    if (text?.trim()) this.explorerResults.push(text);
-  }
-}
 
 export class EvaluationAgent {
   constructor(

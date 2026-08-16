@@ -1,26 +1,4 @@
-import { z } from "zod";
 import type { Skill } from "../skills/types.js";
-
-export const EvaluationSchema = z.object({
-  status: z.enum(["adopted", "divergent", "partial", "missing", "not-applicable"]),
-  reasoning: z.string(),
-  evidence: z.array(z.string()),
-});
-
-export const ExplorationSchema = z.object({
-  answer: z.string().describe(
-    "Direct answer to the question asked, based on what you found. Be specific: name files, line numbers, class names, dependency versions. If nothing was found, say so explicitly."
-  ),
-  confidence: z.enum(["high", "medium", "low"]).describe(
-    "How confident are you in this answer? high = definitive evidence found, medium = partial evidence, low = inferred or nothing found"
-  ),
-  sources: z.array(
-    z.object({
-      file: z.string().describe("Repo-relative file path"),
-      line: z.number().optional().describe("Relevant line number if known"),
-    })
-  ).describe("Files that contain the evidence for this answer"),
-});
 
 export const EXPLORER_SYSTEM_PROMPT = `You are a codebase exploration agent. Your job is to answer a specific question about a software project by searching the code.
 
@@ -63,8 +41,7 @@ export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: 
     ? "\n\nEvaluate strictly: the exact APIs, patterns, and file locations described in the skill definition must be present. Functionally equivalent alternatives do not count as adoption."
     : "\n\nEvaluate functional intent: focus on whether the observable behavior is present, not whether the exact API names match. If all behaviors are present but via a different API or pattern than prescribed, rate 'divergent' — not 'partial'. Only rate 'partial' when an observable behavior is genuinely absent.";
 
-  let prompt = EVALUATOR_SYSTEM_PROMPT + modeInstruction;
-
+  const prompt = EVALUATOR_SYSTEM_PROMPT + modeInstruction;
   if (!additionalContext) return prompt;
   return `${prompt}\n\n## Additional Context\n\n${additionalContext}`;
 }
