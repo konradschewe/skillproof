@@ -1,13 +1,11 @@
 import { discoverSkills } from "../skills/discover.js";
 import { EvaluationAgent } from "../agent/index.js";
 import { FileCache } from "../cache/index.js";
-import { renderMarkdown, renderGitHubSummary, renderHtml } from "../reporter/index.js";
 import { createProvider } from "../providers/index.js";
 import { printSkillBanner } from "../agent/verbose.js";
 import type { ProviderType } from "../providers/types.js";
 import type { EvaluationReport, SkillEvaluationResult } from "./types.js";
 import { execSync } from "child_process";
-import { writeFile } from "fs/promises";
 
 export interface EvaluatorOptions {
   skillsDir: string;
@@ -19,12 +17,11 @@ export interface EvaluatorOptions {
   strict?: boolean;
   verbose?: boolean;
   concurrency?: number;
-  outputFormat: "markdown" | "json" | "github-summary" | "html";
-  outputFile?: string;
+  noCache?: boolean;
 }
 
 export async function runEvaluator(options: EvaluatorOptions): Promise<EvaluationReport> {
-  const { skillsDir, repoPath, provider, cacheDir, filter, systemPrompt, strict, verbose, concurrency = 1, outputFormat, outputFile } = options;
+  const { skillsDir, repoPath, provider, cacheDir, filter, systemPrompt, strict, verbose, concurrency = 1, noCache = false } = options;
 
   const cache = new FileCache(cacheDir);
   await cache.load();
@@ -52,7 +49,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     while (nextIndex < filteredSkills.length) {
       const i = nextIndex++;
       const skill = filteredSkills[i];
-      const cached = cache.get(skill.name, skillsRepoSha);
+      const cached = noCache ? null : cache.get(skill.name, skillsRepoSha);
       if (cached) {
         console.error(`  [cache] ${skill.name}`);
         results[i] = cached.result as SkillEvaluationResult;
@@ -89,25 +86,6 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     evaluatedAt: new Date().toISOString(),
     results,
   };
-
-  const output =
-    outputFormat === "json"
-      ? JSON.stringify(report, null, 2)
-      : outputFormat === "github-summary"
-      ? renderGitHubSummary(report)
-      : outputFormat === "html"
-      ? renderHtml(report)
-      : renderMarkdown(report);
-
-  if (outputFile) {
-    await writeFile(outputFile, output, "utf-8");
-  } else {
-    process.stdout.write(output);
-  }
-
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    await writeFile(process.env.GITHUB_STEP_SUMMARY, renderGitHubSummary(report), "utf-8");
-  }
 
   return report;
 }
