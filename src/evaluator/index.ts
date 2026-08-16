@@ -76,9 +76,11 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(concurrency, filteredSkills.length) }, evaluateOne));
-
-  await cache.save();
+  try {
+    await Promise.all(Array.from({ length: Math.min(concurrency, filteredSkills.length) }, evaluateOne));
+  } finally {
+    await cache.save();
+  }
 
   const report: EvaluationReport = {
     repoPath,
