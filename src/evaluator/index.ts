@@ -3,7 +3,8 @@ import { EvaluationAgent } from "../agent/index.js";
 import { FileCache } from "../cache/index.js";
 import { createProvider } from "../providers/index.js";
 import { printSkillBanner } from "../agent/verbose/index.js";
-import { getSkillsRepoSha } from "../utils/git.js";
+import { hashDirectory, getRepoHash } from "../utils/hash.js";
+import { dirname } from "path";
 import type { ProviderType } from "../providers/types.js";
 import type { EvaluationReport, SkillEvaluationResult } from "./types.js";
 
@@ -26,7 +27,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
   const cache = new FileCache(cacheDir);
   await cache.load();
 
-  const skillsRepoSha = getSkillsRepoSha(skillsDir);
+  const repoHash = getRepoHash(repoPath);
 
   const skills = await discoverSkills(skillsDir);
   const filteredSkills = filter
@@ -49,7 +50,8 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
     while (nextIndex < filteredSkills.length) {
       const i = nextIndex++;
       const skill = filteredSkills[i];
-      const cached = noCache ? null : cache.get(skill.name, skillsRepoSha);
+      const skillHash = await hashDirectory(dirname(skill.path));
+      const cached = noCache ? null : cache.get(skill.name, skillHash, repoHash);
       if (cached) {
         console.error(`  [cache] ${skill.name}`);
         results[i] = cached.result as SkillEvaluationResult;
@@ -71,7 +73,7 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
           ` cost=$${m.estimatedCostUsd.toFixed(4)} duration=${(m.durationMs / 1000).toFixed(1)}s`
         );
       }
-      cache.set(skill.name, skillsRepoSha, result);
+      cache.set(skill.name, skillHash, repoHash, result);
       results[i] = result;
     }
   };

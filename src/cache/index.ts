@@ -4,7 +4,8 @@ import { existsSync } from "fs";
 
 export interface CacheEntry {
   skillName: string;
-  skillsRepoSha: string;
+  skillHash: string;
+  repoHash: string;
   result: unknown;
   evaluatedAt: string;
 }
@@ -32,16 +33,17 @@ export class FileCache {
     await writeFile(this.cachePath, JSON.stringify(this.cache, null, 2));
   }
 
-  get(skillName: string, skillsRepoSha: string): CacheEntry | null {
+  get(skillName: string, skillHash: string, repoHash: string): CacheEntry | null {
     const entry = this.cache.entries[skillName];
-    if (!entry || entry.skillsRepoSha !== skillsRepoSha) return null;
+    if (!entry || entry.skillHash !== skillHash || entry.repoHash !== repoHash) return null;
     return entry;
   }
 
-  set(skillName: string, skillsRepoSha: string, result: unknown): void {
+  set(skillName: string, skillHash: string, repoHash: string, result: unknown): void {
     this.cache.entries[skillName] = {
       skillName,
-      skillsRepoSha,
+      skillHash,
+      repoHash,
       result,
       evaluatedAt: new Date().toISOString(),
     };
