@@ -9,5 +9,4 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   shims: true,
-  banner: { js: "#!/usr/bin/env node" },
 });
