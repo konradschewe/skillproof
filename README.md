@@ -24,13 +24,13 @@ Results are [cached](#caching) so only changed skills are re-evaluated.
 Run directly with npx (no install required):
 
 ```bash
-npx github:konradschewe/skillproof --skills-dir .claude/plugins/my-skills/skills
+npx @skillproof/cli --skills-dir .claude/plugins/my-skills/skills
 ```
 
 Or install globally:
 
 ```bash
-npm install -g github:konradschewe/skillproof
+npm install -g @skillproof/cli
 ```
 
 ---
