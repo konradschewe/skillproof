@@ -1,8 +1,14 @@
 {
-  "name": "skillproof",
-  "version": "0.1.0",
+  "name": "@skillproof/cli",
+  "version": "0.0.0-development",
   "description": "Verify that Claude agent skills are correctly adopted in your codebase",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "skillproof": "./dist/cli.js"
   },
@@ -31,10 +37,15 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.4",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^12.0.9",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "24.12.0",
     "eslint": "9.39.4",
     "prettier": "3.8.1",
     "rimraf": "6.1.3",
+    "semantic-release": "^25.0.9",
     "tsup": "^8.5.1",
     "tsx": "^4.19.0",
     "typescript": "5.9.3"
