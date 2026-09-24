@@ -47,11 +47,25 @@ export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: 
 }
 
 export function buildUserPrompt(skill: Skill): string {
-  return `## Skill Definition (${skill.name})
+  const fileTree = skill.files.map((f) => `  ${f.path}`).join("\n");
+  const fileContents = skill.files
+    .map((f) => `### ${f.path}\n\n${f.content}`)
+    .join("\n\n---\n\n");
 
-${skill.content}
+  return `## Skill: ${skill.name}
 
-Use explore_codebase to gather evidence, then report your evaluation.`;
+This skill is defined by the following files. All content is already provided below — do NOT search for these files in the target repository.
+
+**Files in this skill:**
+${fileTree}
+
+---
+
+${fileContents}
+
+---
+
+Use explore_codebase to gather evidence about the target repository, then report your evaluation.`;
 }
 
 export function buildExplorerUserPrompt(question: string, repoPath: string): string {
