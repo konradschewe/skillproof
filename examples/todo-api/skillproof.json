@@ -1,0 +1,9 @@
+{
+  "skillsDir": "skills",
+  "repoPath": "todo-service",
+  "provider": "aicore",
+  "outputFormat": "html",
+  "outputFile": "report.html",
+  "verbose": true,
+  "concurrency": 2
+}

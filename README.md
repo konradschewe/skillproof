@@ -1,21 +1,46 @@
 # Skillproof
 
-**Verify that Claude agent skills are correctly adopted in your codebase.**
+**Prove that your codebase adopts the skills.**
 
-Skillproof reads `SKILL.md` files from a skills directory and uses an LLM to evaluate whether your project's code actually implements the practices each skill describes. It is designed as a quality gate — run it locally or in CI to ensure skills don't diverge from the code that's supposed to implement them.
+Skillproof reads `SKILL.md` files and uses an LLM to verify whether your codebase actually implements the practices they describe — producing a structured report you can share with your team, run in CI, or publish to GitHub Pages.
+
+---
+
+![Skillproof report for todo-service: 1 adopted, 3 partial, 1 missing](docs/hero.png)
 
 ---
 
 ## How it works
 
-Skills are plain markdown files (`SKILL.md`) that describe what a skill requires — patterns, APIs, configurations. Skillproof uses a two-agent architecture to evaluate each one:
+Teams distribute skills as `SKILL.md` files — plain markdown describing what a coding agent should implement: authentication patterns, error handling conventions, API integration requirements. Skillproof evaluates whether the codebase actually follows them.
 
-1. **Evaluator** (`claude-sonnet`) — reads the `SKILL.md`, decides what to look for, and makes 1–3 focused queries to the explorer. Produces a structured verdict.
-2. **Explorer** (`claude-haiku`) — navigates the repository using filesystem tools (`read_file`, `list_directory`, `grep_files`, etc.) and answers the evaluator's targeted questions.
+```mermaid
+flowchart LR
+    P["Provider Team"] -->|publishes| S["SKILL.md files"]
+    S -->|guides| A["🤖 Coding Agent"]
+    S -->|specifies| V["Skillproof"]
+    A -->|implements| C["Consumer Codebase"]
+    C -->|evaluated by| V
+    V --> R["✅ adopted · ⚠️ partial · ❌ missing"]
+```
 
-Skills are discovered by globbing `**/SKILL.md` inside `--skills-dir`. The skill name is the directory immediately containing the `SKILL.md` file (one level below `skills-dir`).
+Each skill gets a verdict: **adopted**, **divergent**, **partial**, or **missing**. The same skill that guides the coding agent during development becomes the specification for the conformance check — no separate test code required.
 
-Results are [cached](#caching) so only changed skills are re-evaluated.
+Run it locally before a code review, in CI on every push, or on a schedule to track adoption over time. Only skills that changed since the last run are re-evaluated.
+
+→ [See a worked example](examples/todo-api/README.md)
+
+---
+
+## Use cases
+
+**Enforce team standards** — A platform team distributes skills for authentication, error handling, or logging conventions. Every consumer team's coding agent implements them. Skillproof proves they're followed — and produces a report you can share with management or use as a compliance artifact.
+
+**React to changing requirements** — When a provider updates a skill, run Skillproof to instantly see which implementations need to change. No manual auditing across repositories, no waiting for an incident to surface the gap.
+
+**Track migration adoption** — Rolling out a new library, API version, or architectural pattern across multiple teams? Skillproof shows exactly which repositories have adopted it and which are still on the old implementation. A control mechanism for the team owning the migration.
+
+**Gate CI on skill conformance** — Fail the build when required skills are missing or partially implemented. Use `--fail-on missing,partial` to enforce a minimum adoption level before merging.
 
 ---
 
@@ -24,7 +49,7 @@ Results are [cached](#caching) so only changed skills are re-evaluated.
 Run directly with npx (no install required):
 
 ```bash
-npx @skillproof/cli --skills-dir .claude/plugins/my-skills/skills
+npx @skillproof/cli --skills-dir ./skills
 ```
 
 Or install globally:
@@ -41,7 +66,7 @@ npm install -g @skillproof/cli
 export ANTHROPIC_API_KEY=your-api-key
 
 skillproof \
-  --skills-dir .claude/plugins/my-skills/skills \
+  --skills-dir ./skills \
   --output-format markdown
 ```
 
@@ -84,7 +109,7 @@ Pass `--config <path>` to load options from a JSON file. All path values are res
   "concurrency": 5,
   "cacheDir": ".skillproof-cache",
   "noCache": false,
-  "filter": "sap-agent-bootstrap",
+  "filter": "authentication",
   "systemPrompt": "This repository is a shared base library. Evaluate skills accordingly.",
   "strict": false,
   "failOn": "missing,partial"
@@ -156,10 +181,10 @@ The raw evaluation report as JSON:
   "evaluatedAt": "2026-08-18T10:00:00.000Z",
   "results": [
     {
-      "skillName": "sap-agent-bootstrap",
-      "status": "adopted",
+      "skillName": "authentication",
+      "status": "partial",
       "reasoning": "...",
-      "evidence": ["harness/agent.py", "harness/config.py"],
+      "evidence": ["src/todos.ts"],
       "metrics": {
         "durationMs": 12300,
         "estimatedCostUsd": 0.0042,
@@ -217,7 +242,7 @@ Use Skillproof in CI with the dedicated [skillproof-action](https://github.com/k
 
 - uses: konradschewe/skillproof-action@v1
   with:
-    skills-dir: .claude/plugins/my-skills/skills
+    skills-dir: ./skills
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
@@ -245,7 +270,7 @@ jobs:
 
       - uses: konradschewe/skillproof-action@v1
         with:
-          skills-dir: .claude/plugins/my-skills/skills
+          skills-dir: ./skills
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           concurrency: '5'
           fail-on: missing,partial
