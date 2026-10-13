@@ -49,7 +49,7 @@ export class EvaluationAgent {
 
       const evaluator = createAgent({
         model,
-        tools: [explorer.asTool()],
+        tools: [withTemplateSanitization(explorer.asTool())],
         systemPrompt: buildEvaluatorSystemPrompt(this.systemPrompt, this.strict),
         responseFormat: toolStrategy(EvaluationSchema as any) as any,
         middleware: [
