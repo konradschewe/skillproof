@@ -63,15 +63,18 @@ function patchArgs(input: unknown, excludePatterns: string[], isSearchFiles: boo
   };
 }
 
+export function sanitizeTemplateMarkers(text: string): string {
+  return text.replace(/\{\{/g, "{ {").replace(/\}\}/g, "} }");
+}
+
 export function withTemplateSanitization(tool: StructuredToolInterface): StructuredToolInterface {
   const original = tool.invoke.bind(tool);
   return Object.create(tool, {
     invoke: {
       value: async (input: unknown, config?: unknown) => {
         const result = await original(input as any, config as any);
-        const sanitize = (s: string) => s.replace(/\{\{/g, "{ {").replace(/\}\}/g, "} }");
-        if (typeof result === "string") return sanitize(result);
-        if (typeof (result as any)?.content === "string") return { ...result, content: sanitize((result as any).content) };
+        if (typeof result === "string") return sanitizeTemplateMarkers(result);
+        if (typeof (result as any)?.content === "string") return { ...result, content: sanitizeTemplateMarkers((result as any).content) };
         return result;
       },
     },

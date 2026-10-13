@@ -22,4 +22,4 @@ export function prepareExplorerTools(
 
 export { loadExcludePatterns } from "./patterns.js";
 export { createGrepTool } from "./grep.js";
-export { withTemplateSanitization } from "./wrappers.js";
+export { withTemplateSanitization, sanitizeTemplateMarkers } from "./wrappers.js";
