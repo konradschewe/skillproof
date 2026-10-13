@@ -11,7 +11,7 @@ import { EvaluatorMetricsHandler, type EvaluationMetrics } from "./metrics.js";
 import { estimateCost } from "./cost.js";
 import { EvaluationSchema } from "./schemas.js";
 import { buildUserPrompt, buildEvaluatorSystemPrompt } from "./prompts.js";
-import { loadExcludePatterns, prepareExplorerTools, createGrepTool } from "./tools/index.js";
+import { loadExcludePatterns, prepareExplorerTools, createGrepTool, withTemplateSanitization } from "./tools/index.js";
 import { VerboseHandler } from "./verbose/index.js";
 
 const SUMMARIZE_TRIGGER_TOKENS = 150_000;
@@ -39,7 +39,7 @@ export class EvaluationAgent {
       const excludePatterns = await loadExcludePatterns(repoPath);
       const explorerTools = [
         ...prepareExplorerTools(await mcp.getTools(), excludePatterns),
-        createGrepTool(repoPath, excludePatterns),
+        withTemplateSanitization(createGrepTool(repoPath, excludePatterns)),
       ];
       const model = this.provider.createModel();
 
