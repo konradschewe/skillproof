@@ -1,4 +1,5 @@
 import type { Skill } from "../skills/types.js";
+import { sanitizeTemplateMarkers } from "./tools/wrappers.js";
 
 export const EXPLORER_SYSTEM_PROMPT = `You are a codebase exploration agent. Your job is to answer a specific question about a software project by searching the code.
 
@@ -49,7 +50,7 @@ export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: 
 export function buildUserPrompt(skill: Skill): string {
   const fileTree = skill.files.map((f) => `  ${f.path}`).join("\n");
   const fileContents = skill.files
-    .map((f) => `### ${f.path}\n\n${f.content}`)
+    .map((f) => `### ${f.path}\n\n${sanitizeTemplateMarkers(f.content)}`)
     .join("\n\n---\n\n");
 
   return `## Skill: ${skill.name}
