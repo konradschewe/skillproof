@@ -1,6 +1,5 @@
 import type { StructuredToolInterface } from "@langchain/core/tools";
-import { withExcludePatterns } from "./wrappers.js";
-import { withOutputLimit } from "./wrappers.js";
+import { withExcludePatterns, withOutputLimit, withTemplateSanitization } from "./wrappers.js";
 
 export const EXPLORER_TOOLS = new Set([
   "read_file",
@@ -17,8 +16,10 @@ export function prepareExplorerTools(
   return tools
     .filter((t) => EXPLORER_TOOLS.has(t.name))
     .map((t) => withExcludePatterns(t, excludePatterns))
-    .map((t) => withOutputLimit(t));
+    .map((t) => withOutputLimit(t))
+    .map((t) => withTemplateSanitization(t));
 }
 
 export { loadExcludePatterns } from "./patterns.js";
 export { createGrepTool } from "./grep.js";
+export { withTemplateSanitization, sanitizeTemplateMarkers } from "./wrappers.js";

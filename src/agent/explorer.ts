@@ -8,6 +8,7 @@ import { ExplorationSchema } from "./schemas.js";
 import { buildExplorerUserPrompt, EXPLORER_SYSTEM_PROMPT } from "./prompts.js";
 import { VerboseHandler } from "./verbose/index.js";
 import { MessageAccumulatorHandler, type AgentMetrics } from "./metrics.js";
+import { sanitizeTemplateMarkers } from "./tools/index.js";
 
 const RECURSION_LIMIT = 16;
 
@@ -69,9 +70,11 @@ export class ExplorerAgent {
 
   private async handleRecursionLimit(question: string): Promise<string> {
     console.warn(`  [warn]  explorer hit recursion limit (${RECURSION_LIMIT}) — summarizing partial findings with extra LLM call`);
-    const partialFindings = this.metricsHandler.toolResults
-      .filter((t: string) => t.trim().length > 0)
-      .join("\n---\n");
+    const partialFindings = sanitizeTemplateMarkers(
+      this.metricsHandler.toolResults
+        .filter((t: string) => t.trim().length > 0)
+        .join("\n---\n")
+    );
     try {
       const structured = this.model.withStructuredOutput(ExplorationSchema);
       const fallback = await structured.invoke(

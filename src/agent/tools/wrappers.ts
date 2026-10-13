@@ -63,6 +63,24 @@ function patchArgs(input: unknown, excludePatterns: string[], isSearchFiles: boo
   };
 }
 
+export function sanitizeTemplateMarkers(text: string): string {
+  return text.replace(/\{\{/g, "{ {").replace(/\}\}/g, "} }");
+}
+
+export function withTemplateSanitization(tool: StructuredToolInterface): StructuredToolInterface {
+  const original = tool.invoke.bind(tool);
+  return Object.create(tool, {
+    invoke: {
+      value: async (input: unknown, config?: unknown) => {
+        const result = await original(input as any, config as any);
+        if (typeof result === "string") return sanitizeTemplateMarkers(result);
+        if (typeof (result as any)?.content === "string") return { ...result, content: sanitizeTemplateMarkers((result as any).content) };
+        return result;
+      },
+    },
+  });
+}
+
 export function withExcludePatterns(
   tool: StructuredToolInterface,
   excludePatterns: string[]
