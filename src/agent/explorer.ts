@@ -2,7 +2,6 @@ import { z } from "zod";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { HumanMessage } from "@langchain/core/messages";
 import { createAgent, toolStrategy } from "langchain";
-import { GraphRecursionError } from "@langchain/langgraph";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 import { ExplorationSchema } from "./schemas.js";
@@ -11,6 +10,11 @@ import { VerboseHandler } from "./verbose/index.js";
 import { MessageAccumulatorHandler, type AgentMetrics } from "./metrics.js";
 
 const RECURSION_LIMIT = 16;
+
+function isRecursionError(err: unknown): boolean {
+  return (err as any)?.name === "GraphRecursionError" ||
+    (err instanceof Error && err.message.startsWith("Recursion limit"));
+}
 
 export class ExplorerAgent {
   readonly metricsHandler = new MessageAccumulatorHandler();
@@ -55,7 +59,7 @@ export class ExplorerAgent {
       );
       return JSON.stringify(result.structuredResponse, null, 2);
     } catch (err) {
-      if (err instanceof GraphRecursionError) return this.handleRecursionLimit(question);
+      if (isRecursionError(err)) return this.handleRecursionLimit(question);
       this.logApiError(err);
       throw err;
     } finally {
@@ -68,18 +72,23 @@ export class ExplorerAgent {
     const partialFindings = this.metricsHandler.toolResults
       .filter((t: string) => t.trim().length > 0)
       .join("\n---\n");
-    const structured = this.model.withStructuredOutput(ExplorationSchema);
-    const fallback = await structured.invoke(
-      `The following file contents were read before hitting the exploration limit. ` +
-      `Synthesize them into a structured answer for the original question: "${question}"\n\n` +
-      `Partial findings:\n${partialFindings || "none gathered"}`
-    );
-    return JSON.stringify(fallback, null, 2);
+    try {
+      const structured = this.model.withStructuredOutput(ExplorationSchema);
+      const fallback = await structured.invoke(
+        `The following file contents were read before hitting the exploration limit. ` +
+        `Synthesize them into a structured answer for the original question: "${question}"\n\n` +
+        `Partial findings:\n${partialFindings || "none gathered"}`
+      );
+      return JSON.stringify(fallback, null, 2);
+    } catch (err) {
+      this.logApiError(err);
+      throw err;
+    }
   }
 
   private logApiError(err: unknown): void {
     const message = err instanceof Error ? err.message : String(err);
-    const body = (err as any)?.response?.data ?? (err as any)?.body ?? null;
+    const body = (err as any)?.cause?.response?.data ?? (err as any)?.response?.data ?? (err as any)?.body ?? null;
     console.error(`  [explorer] API error: ${message}`);
     if (body) console.error(`  [explorer] API error body:`, JSON.stringify(body));
   }
