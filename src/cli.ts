@@ -82,7 +82,10 @@ program
       await writeGitHubStepSummary(report);
       checkFailStatuses(report, failStatuses);
     } catch (err) {
-      console.error("Error:", err instanceof Error ? err.message : err);
+      const message = err instanceof Error ? err.message : String(err);
+      const body = (err as any)?.response?.data ?? (err as any)?.body ?? null;
+      console.error("Error:", message);
+      if (body) console.error("Error details:", JSON.stringify(body, null, 2));
       process.exit(1);
     }
   });
