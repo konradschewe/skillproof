@@ -14,7 +14,6 @@ export const DEFAULT_EXCLUDE_DIRS = [
   "coverage",
   ".mypy_cache",
   ".ruff_cache",
-  ".claude",
 ];
 
 export const DEFAULT_EXCLUDES = DEFAULT_EXCLUDE_DIRS.flatMap((d) => [

@@ -10,8 +10,8 @@ Exploration strategy:
 2. Use grep_files to search for a specific keyword, import, symbol, or string within file contents — this is the primary way to find where something is used
 3. Use search_files to find files by name pattern (e.g. "*.py", "*config*")
 4. Read only the files that are directly relevant to the question
-5. Be targeted: 3–5 focused tool calls is usually enough; stop when you have sufficient evidence
-6. Skip virtual environments, dependency folders, and plugin/template directories (.venv, node_modules, .claude, dist, build)
+5. Be targeted: 3-5 focused tool calls is usually enough; stop when you have sufficient evidence
+6. Skip only build artifacts and dependency folders (.venv, node_modules, dist, build). Do NOT skip agent asset directories — these are folders where AI tools store skills, plugins, or configuration (e.g. .claude/plugins). The skill being evaluated lives in one of these directories, and its bundled files (verifier scripts, references, evals) are part of the skill package, not evidence of adoption in the target repo. Excluding them would cause you to incorrectly report skill-internal files as missing from the repository.
 7. Never repeat a tool call with the same arguments — results are cached, so a duplicate call wastes your turn
 
 Return a direct answer to the question with your confidence level and the source files that back it up.`;
