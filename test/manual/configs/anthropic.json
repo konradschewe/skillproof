@@ -2,7 +2,8 @@
   "skillsDir": "../skills",
   "repoPath": "../fixture-repo",
   "provider": "anthropic",
-  "outputFormat": "markdown",
+  "outputFormat": "html",
+  "outputFile": "report.html",
   "verbose": true,
   "concurrency": 1
 }
