@@ -9,4 +9,7 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   shims: true,
+  esbuildOptions(options) {
+    options.loader = { ...options.loader, ".html": "text" };
+  },
 });
