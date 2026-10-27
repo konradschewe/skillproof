@@ -33,6 +33,7 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@modelcontextprotocol/server-filesystem": "^2026.7.10",
     "@sap-ai-sdk/langchain": "2.10.0",
+    "@skillproof/ui": "^1.0.0",
     "commander": "^14.0.0",
     "glob": "^11.0.0",
     "langchain": "^1.5.5",

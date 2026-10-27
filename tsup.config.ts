@@ -9,4 +9,8 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   shims: true,
+  noExternal: ["@skillproof/ui"],
+  esbuildOptions(options) {
+    options.loader = { ...options.loader, ".html": "text" };
+  },
 });
