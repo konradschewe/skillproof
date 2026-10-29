@@ -11,13 +11,13 @@ export interface CliConfig {
   concurrency?: number;
   cacheDir?: string;
   noCache?: boolean;
-  outputFormat?: string;
-  outputFile?: string;
+  outputFormat?: string | string[];
+  outputFile?: string | Array<string | undefined>;
   failOn?: string;
   verbose?: boolean;
 }
 
-const PATH_KEYS: (keyof CliConfig)[] = ["skillsDir", "repoPath", "cacheDir", "outputFile"];
+const PATH_KEYS: (keyof CliConfig)[] = ["skillsDir", "repoPath", "cacheDir"];
 
 export function loadConfigFile(configPath: string): CliConfig {
   const absPath = resolve(configPath);
@@ -28,6 +28,12 @@ export function loadConfigFile(configPath: string): CliConfig {
     if (typeof result[key] === "string") {
       (result as Record<string, unknown>)[key] = resolve(dir, result[key] as string);
     }
+  }
+  // Resolve outputFile path(s)
+  if (typeof result.outputFile === "string") {
+    result.outputFile = resolve(dir, result.outputFile);
+  } else if (Array.isArray(result.outputFile)) {
+    result.outputFile = result.outputFile.map((f) => (f ? resolve(dir, f) : f));
   }
   return result;
 }
