@@ -20,6 +20,16 @@ export async function writeOutput(output: string, outputFile: string | undefined
   }
 }
 
+export async function writeAllOutputs(
+  report: EvaluationReport,
+  formats: OutputFormat[],
+  files: Array<string | undefined>,
+): Promise<void> {
+  await Promise.all(
+    formats.map((fmt, i) => writeOutput(renderOutput(report, fmt), files[i])),
+  );
+}
+
 export async function writeGitHubStepSummary(report: EvaluationReport): Promise<void> {
   if (process.env.GITHUB_STEP_SUMMARY) {
     await writeFile(process.env.GITHUB_STEP_SUMMARY, renderGitHubSummary(report), "utf-8");

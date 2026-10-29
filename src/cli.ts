@@ -5,7 +5,7 @@ import { runEvaluator } from "./evaluator/index.js";
 import { OUTPUT_FORMATS } from "./reporter/index.js";
 import { PROVIDER_TYPES } from "./providers/types.js";
 import { validateProvider, validateOutputFormat, validateConcurrency, validateFailStatuses } from "./cli/validation.js";
-import { renderOutput, writeOutput, writeGitHubStepSummary, checkFailStatuses } from "./cli/output.js";
+import { writeAllOutputs, writeGitHubStepSummary, checkFailStatuses } from "./cli/output.js";
 import { loadConfigFile, type CliConfig } from "./cli/config.js";
 import type { ProviderType } from "./providers/types.js";
 import type { OutputFormat } from "./reporter/index.js";
@@ -52,15 +52,19 @@ program
       const rawConc     = from("concurrency")    ? opts.concurrency   : String(file.concurrency ?? opts.concurrency ?? "1");
       const cacheDir    = from("cacheDir")       ? opts.cacheDir      : (file.cacheDir      ?? opts.cacheDir      ?? ".skillproof-cache");
       const noCache     = from("cache")          ? !opts.cache        : (file.noCache       ?? !opts.cache);
-      const rawFormat   = from("outputFormat")   ? opts.outputFormat  : (file.outputFormat  ?? opts.outputFormat  ?? "markdown");
-      const outputFile  = from("outputFile")     ? opts.outputFile    : (file.outputFile    ?? opts.outputFile);
+      const rawFormats = from("outputFormat")
+        ? [opts.outputFormat]
+        : (Array.isArray(file.outputFormat) ? file.outputFormat : [file.outputFormat ?? opts.outputFormat ?? "markdown"]);
+      const rawFiles = from("outputFile")
+        ? [opts.outputFile]
+        : (Array.isArray(file.outputFile) ? file.outputFile : [file.outputFile ?? opts.outputFile]);
       const failOnRaw   = from("failOn")         ? opts.failOn        : (file.failOn        ?? opts.failOn);
       const verbose     = from("verbose")        ? opts.verbose       : (file.verbose       ?? opts.verbose       ?? false);
 
       if (!skillsDir) throw new Error("--skills-dir is required (or set skillsDir in config file)");
 
       const provider     = validateProvider(rawProvider);
-      const outputFormat = validateOutputFormat(rawFormat) as OutputFormat;
+      const outputFormats = rawFormats.map((f) => validateOutputFormat(f) as OutputFormat);
       const concurrency  = validateConcurrency(rawConc);
       const failStatuses = validateFailStatuses(failOnRaw);
 
@@ -77,8 +81,7 @@ program
         noCache: noCache ?? false,
       });
 
-      const output = renderOutput(report, outputFormat);
-      await writeOutput(output, outputFile);
+      await writeAllOutputs(report, outputFormats, rawFiles);
       await writeGitHubStepSummary(report);
       checkFailStatuses(report, failStatuses);
     } catch (err) {
