@@ -1,6 +1,6 @@
 import { glob } from "glob";
 import { readFile } from "fs/promises";
-import { join } from "path";
+import { basename, join } from "path";
 import type { Skill, SkillFile } from "./types.js";
 
 export async function discoverSkills(skillsDir: string): Promise<Skill[]> {
@@ -9,9 +9,8 @@ export async function discoverSkills(skillsDir: string): Promise<Skill[]> {
 
   const skills = await Promise.all(
     skillMdFiles.map(async (skillMdPath) => {
-      const relativePath = skillMdPath.replace(skillsDir + "/", "");
-      const name = relativePath.split("/")[0];
       const skillDir = skillMdPath.replace("/SKILL.md", "");
+      const name = basename(skillDir);
 
       const allFilePaths = await glob(join(skillDir, "**/*"), { absolute: true, nodir: true });
       const files: SkillFile[] = await Promise.all(
