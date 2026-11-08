@@ -10,8 +10,15 @@ export interface CacheEntry {
   evaluatedAt: string;
 }
 
+export interface RepoContextEntry {
+  repoHash: string;
+  context: string;
+  evaluatedAt: string;
+}
+
 export interface Cache {
   entries: Record<string, CacheEntry>;
+  repoContext?: RepoContextEntry;
 }
 
 export class FileCache {
@@ -47,5 +54,15 @@ export class FileCache {
       result,
       evaluatedAt: new Date().toISOString(),
     };
+  }
+
+  getRepoContext(repoHash: string): RepoContextEntry | null {
+    const entry = this.cache.repoContext;
+    if (!entry || entry.repoHash !== repoHash) return null;
+    return entry;
+  }
+
+  setRepoContext(repoHash: string, context: string): void {
+    this.cache.repoContext = { repoHash, context, evaluatedAt: new Date().toISOString() };
   }
 }
