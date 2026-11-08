@@ -7,7 +7,7 @@ export class VerboseHandler extends BaseCallbackHandler {
   name = "VerboseHandler";
   private toolCallCount = 0;
 
-  constructor(private label: "evaluator" | "explorer") {
+  constructor(private label: "evaluator" | "explorer" | "repo-context") {
     super();
   }
 
@@ -15,10 +15,12 @@ export class VerboseHandler extends BaseCallbackHandler {
     const text = output.generations?.[0]?.[0]?.text?.trim();
     if (!text) return;
 
-    const prefix = this.label === "explorer" ? "  " : "";
+    const prefix = this.label === "evaluator" ? "" : "  ";
     const tag = this.label === "evaluator"
       ? `${c.evalLabel}💭 evaluator thinks:${c.reset}`
-      : `  ${c.exprLabel}💭 explorer thinks:${c.reset}`;
+      : this.label === "explorer"
+        ? `  ${c.exprLabel}💭 explorer thinks:${c.reset}`
+        : `  ${c.exprLabel}💭 repo-context thinks:${c.reset}`;
 
     const lines = text.split("\n").map(l => `${prefix}  ${c.think}${c.italic}${l}${c.reset}`).join("\n");
     process.stderr.write(`\n${tag}\n${lines}\n`);

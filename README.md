@@ -24,7 +24,12 @@ flowchart LR
     V --> R["✅ adopted · ⚠️ partial · ❌ missing"]
 ```
 
-Each skill gets a verdict: **adopted**, **divergent**, **partial**, or **missing**. The same skill that guides the coding agent during development becomes the specification for the conformance check — no separate test code required.
+Evaluation runs in two stages:
+
+1. **Repo context** — A lightweight agent explores the repository once and produces a structural summary (language, directory layout, what is absent). This runs before any skill evaluation and its result is cached.
+2. **Skill evaluation** — Each skill is evaluated by an evaluator agent that has the repo context in its system prompt. For skills that are clearly irrelevant given the context, the evaluator can return `not-applicable` without further exploration.
+
+Each skill gets a verdict: **adopted**, **divergent**, **partial**, **missing**, or **not-applicable**. The same skill that guides the coding agent during development becomes the specification for the conformance check — no separate test code required.
 
 Run it locally before a code review, in CI on every push, or on a schedule to track adoption over time. Only skills that changed since the last run are re-evaluated.
 
@@ -83,7 +88,7 @@ All options can be set via CLI flags or a [config file](#config-file) (`--config
 | `--repo-path <path>` | `repoPath` | string | `process.cwd()` | Repository to evaluate. |
 | `--filter <substring>` | `filter` | string | — | Only evaluate skills whose name contains this substring. |
 | `--provider <type>` | `provider` | `anthropic` \| `aicore` | `anthropic` | LLM provider. See [Providers](#providers). |
-| `--system-prompt <text>` | `systemPrompt` | string | — | Appended to the evaluator's system prompt. Use to describe repo-specific context (e.g. "this is a shared library, not a concrete agent"). |
+| `--system-prompt <text>` | `systemPrompt` | string | — | Additional context passed to both the repo context agent and the skill evaluator. Use to describe repo-specific architecture that affects skill evaluation (e.g. "this is a shared library, not a concrete agent"). |
 | `--strict` | `strict` | boolean | `false` | Require exact APIs and patterns as specified. Without `--strict`, functionally equivalent implementations are accepted as `adopted`. See [Adoption statuses](#adoption-statuses). |
 | `--concurrency <n>` | `concurrency` | integer | `1` | Number of skills to evaluate in parallel. |
 | `--cache-dir <path>` | `cacheDir` | string | `.skillproof-cache` | Directory for the evaluation cache. |
@@ -225,11 +230,12 @@ Progress and per-skill metrics are always written to stderr, separate from the r
 
 Results are cached in `<cache-dir>/skillproof-cache.json` (default: `.skillproof-cache/skillproof-cache.json`).
 
-A cached result is used when both of these match the previous run:
-- **Skill hash** — content hash of the skill's directory
-- **Repo hash** — HEAD commit SHA of the repository being evaluated
+The cache has two sections:
 
-Use `--no-cache` to force re-evaluation regardless. Results are still saved to the cache after evaluation.
+- **`repoContext`** — The repo context summary generated in stage 1. Invalidated when the repository's HEAD commit changes.
+- **`entries`** — Per-skill evaluation results. A cached result is used when both the skill's content hash and the repo's HEAD commit SHA match the previous run.
+
+Use `--no-cache` to force re-evaluation of everything. Results are still saved to the cache after evaluation.
 
 ---
 

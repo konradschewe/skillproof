@@ -37,14 +37,29 @@ Classifications:
 
 Be specific in your reasoning and cite file paths as evidence.`;
 
-export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: boolean): string {
+export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: boolean, repoContext?: string): string {
   const modeInstruction = strict
     ? "\n\nEvaluate strictly: the exact APIs, patterns, and file locations described in the skill definition must be present. Functionally equivalent alternatives do not count as adoption."
     : "\n\nEvaluate functional intent: focus on whether the observable behavior is present, not whether the exact API names match. If all behaviors are present but via a different API or pattern than prescribed, rate 'divergent' — not 'partial'. Only rate 'partial' when an observable behavior is genuinely absent.";
 
-  const prompt = EVALUATOR_SYSTEM_PROMPT + modeInstruction;
-  if (!additionalContext) return prompt;
-  return `${prompt}\n\n## Additional Context\n\n${additionalContext}`;
+  let prompt = EVALUATOR_SYSTEM_PROMPT + modeInstruction;
+  if (additionalContext) {
+    prompt +=
+      `\n\n## Additional Context (provided by the user)\n\n` +
+      `The following context was supplied by the person running this evaluation. ` +
+      `Treat it as authoritative — it takes precedence over any conflicting inference from repository exploration.\n\n` +
+      additionalContext;
+  }
+  if (repoContext) {
+    prompt +=
+      `\n\n## Repository Context (auto-generated)\n\n` +
+      `The following summary was produced by a dedicated codebase analysis agent before this evaluation. ` +
+      `Use it to make fast-path decisions: if the context already provides sufficient evidence for a verdict ` +
+      `(for example, a skill requires Python runtime files that the repo clearly does not contain), ` +
+      `classify the skill directly without calling explore_codebase.\n\n` +
+      repoContext;
+  }
+  return prompt;
 }
 
 export function buildUserPrompt(skill: Skill): string {
