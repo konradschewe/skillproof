@@ -1,5 +1,6 @@
 import { discoverSkills } from "../skills/discover.js";
 import { EvaluationAgent } from "../agent/index.js";
+import { RepoContextAgent } from "../agent/repo-context.js";
 import { FileCache } from "../cache/index.js";
 import { createProvider } from "../providers/index.js";
 import { printSkillBanner } from "../agent/verbose/index.js";
@@ -41,7 +42,21 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
   console.error(`Found ${filteredSkills.length} skill(s).`);
 
   const llmProvider = createProvider(provider);
-  const agent = new EvaluationAgent(llmProvider, verbose, systemPrompt, strict);
+
+  const cachedContextEntry = noCache ? null : cache.getRepoContext(repoHash);
+  let repoContext: string;
+  if (cachedContextEntry) {
+    console.error(`  [cache]   repo context`);
+    repoContext = cachedContextEntry.context;
+  } else {
+    console.error(`  [context] Generating repo context...`);
+    const contextAgent = new RepoContextAgent(llmProvider, verbose, systemPrompt);
+    repoContext = await contextAgent.generateContext(repoPath);
+    cache.setRepoContext(repoHash, repoContext);
+    await cache.save();
+  }
+
+  const agent = new EvaluationAgent(llmProvider, verbose, systemPrompt, strict, repoContext);
 
   const results: SkillEvaluationResult[] = new Array(filteredSkills.length);
   let nextIndex = 0;
