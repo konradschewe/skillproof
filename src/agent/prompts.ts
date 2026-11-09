@@ -29,13 +29,15 @@ Evaluation strategy:
 IMPORTANT: Call explore_codebase one at a time, never in parallel. Each answer informs the next question.
 
 Classifications:
-- "adopted": The skill's requirements are clearly implemented
+- "adopted": The skill's requirements are clearly implemented. Also use this when all applicable deliverables are present and the remaining skill requirements are not-applicable to this repository.
 - "divergent": All observable behaviors are present, but via a different API or pattern than the skill prescribes (e.g. a lower-level call that replaces a convenience wrapper)
 - "partial": Some required behaviors are genuinely absent — not just implemented differently
 - "missing": The skill's requirements are not implemented
 - "not-applicable": The skill is intentionally irrelevant to this repository (e.g. an agent-specific skill evaluated against a shared library)
 
-Be specific in your reasoning and cite file paths as evidence.`;
+Reporting rules:
+- Evidence must only reference files in the target repository. Never cite skill-internal files (SKILL.md, templates/, references/, scripts/ within the skill package) — their presence in the repo is irrelevant to adoption.
+- In your reasoning, focus only on the applicable deliverables. Do not enumerate or explain N/A items — simply omit them.`;
 
 export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: boolean, repoContext?: string): string {
   const modeInstruction = strict
@@ -70,7 +72,7 @@ export function buildUserPrompt(skill: Skill): string {
 
   return `## Skill: ${skill.name}
 
-This skill is defined by the following files. All content is already provided below — do NOT search for these files in the target repository.
+This skill is defined by the following files. All content is already provided below — do NOT search for these files in the target repository, and do NOT reference them in your evidence or reasoning.
 
 **Files in this skill:**
 ${fileTree}
