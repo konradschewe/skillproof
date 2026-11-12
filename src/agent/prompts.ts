@@ -1,4 +1,5 @@
 import type { Skill } from "../skills/types.js";
+import type { SkillEvaluationResult } from "../evaluator/types.js";
 import { sanitizeTemplateMarkers } from "./tools/wrappers.js";
 
 export const EXPLORER_SYSTEM_PROMPT = `You are a codebase exploration agent. Your job is to answer a specific question about a software project by searching the code.
@@ -64,11 +65,26 @@ export function buildEvaluatorSystemPrompt(additionalContext?: string, strict?: 
   return prompt;
 }
 
-export function buildUserPrompt(skill: Skill): string {
+export function buildUserPrompt(skill: Skill, previousResult?: SkillEvaluationResult): string {
   const fileTree = skill.files.map((f) => `  ${f.path}`).join("\n");
   const fileContents = skill.files
     .map((f) => `### ${f.path}\n\n${sanitizeTemplateMarkers(f.content)}`)
     .join("\n\n---\n\n");
+
+  let previousResultSection = "";
+  if (previousResult) {
+    const evidenceLines = previousResult.evidence.map((e) => `- ${e}`).join("\n");
+    previousResultSection = `\n\n## Previous Evaluation (prior repo commit, same skill version)
+
+Status: ${previousResult.status}
+
+Reasoning: ${previousResult.reasoning}
+
+Evidence:
+${evidenceLines}
+
+Use this as a starting hint to guide your exploration. Verify with targeted calls before accepting the verdict — do not blindly carry it forward.`;
+  }
 
   return `## Skill: ${skill.name}
 
@@ -82,7 +98,7 @@ ${fileTree}
 ${fileContents}
 
 ---
-
+${previousResultSection}
 Use explore_codebase to gather evidence about the target repository, then report your evaluation.`;
 }
 

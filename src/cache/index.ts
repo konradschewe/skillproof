@@ -56,6 +56,12 @@ export class FileCache {
     };
   }
 
+  getLatestBySkillHash(skillName: string, skillHash: string): CacheEntry | null {
+    const entry = this.cache.entries[skillName];
+    if (!entry || entry.skillHash !== skillHash) return null;
+    return entry;
+  }
+
   getRepoContext(repoHash: string): RepoContextEntry | null {
     const entry = this.cache.repoContext;
     if (!entry || entry.repoHash !== repoHash) return null;
