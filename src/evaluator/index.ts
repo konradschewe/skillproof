@@ -73,12 +73,14 @@ export async function runEvaluator(options: EvaluatorOptions): Promise<Evaluatio
         continue;
       }
 
+      const previousResult = noCache ? null : cache.getLatestBySkillHash(skill.name, skillHash);
+
       if (verbose) {
         printSkillBanner(skill.name, i + 1, filteredSkills.length);
       } else {
         console.error(`  [eval]  ${skill.name}`);
       }
-      const result = await agent.evaluate(skill, repoPath);
+      const result = await agent.evaluate(skill, repoPath, previousResult?.result as SkillEvaluationResult | undefined);
       if (result.metrics) {
         const m = result.metrics;
         const totalTokens = m.evaluator.inputTokens + m.evaluator.outputTokens + m.explorer.inputTokens + m.explorer.outputTokens;

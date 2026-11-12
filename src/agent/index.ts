@@ -25,7 +25,7 @@ export class EvaluationAgent {
     private repoContext?: string
   ) {}
 
-  async evaluate(skill: Skill, repoPath: string): Promise<SkillEvaluationResult> {
+  async evaluate(skill: Skill, repoPath: string, previousResult?: SkillEvaluationResult): Promise<SkillEvaluationResult> {
     const serverPath = createRequire(import.meta.url).resolve(
       "@modelcontextprotocol/server-filesystem/dist/index.js"
     );
@@ -68,7 +68,7 @@ export class EvaluationAgent {
         : [evaluatorMetricsHandler];
 
       const result = await evaluator.invoke(
-        { messages: [new HumanMessage(buildUserPrompt(skill))] },
+        { messages: [new HumanMessage(buildUserPrompt(skill, previousResult))] },
         { callbacks, recursionLimit: 1_000 } as any
       );
 

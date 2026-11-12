@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { resolve } from "path";
+import { createWriteStream } from "fs";
 import { runEvaluator } from "./evaluator/index.js";
 import { OUTPUT_FORMATS } from "./reporter/index.js";
 import { PROVIDER_TYPES } from "./providers/types.js";
@@ -68,22 +69,36 @@ program
       const concurrency  = validateConcurrency(rawConc);
       const failStatuses = validateFailStatuses(failOnRaw);
 
-      const report = await runEvaluator({
-        skillsDir: resolve(skillsDir),
-        repoPath: resolve(repoPath),
-        provider: provider as ProviderType,
-        cacheDir: resolve(cacheDir),
-        filter,
-        systemPrompt,
-        strict: strict ?? false,
-        concurrency,
-        verbose: verbose ?? false,
-        noCache: noCache ?? false,
-      });
+      const logPath = resolve(cacheDir, "skillproof.log");
+      const stream = createWriteStream(logPath, { flags: "w" });
+      const stripAnsi = (s: string) => s.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
+      const origWrite = process.stderr.write.bind(process.stderr);
+      (process.stderr as any).write = (chunk: unknown, ...args: unknown[]) => {
+        stream.write(stripAnsi(String(chunk)));
+        return (origWrite as any)(chunk, ...args);
+      };
+      const closelog = () => { (process.stderr as any).write = origWrite; stream.end(); };
 
-      await writeAllOutputs(report, outputFormats, rawFiles);
-      await writeGitHubStepSummary(report);
-      checkFailStatuses(report, failStatuses);
+      try {
+        const report = await runEvaluator({
+          skillsDir: resolve(skillsDir),
+          repoPath: resolve(repoPath),
+          provider: provider as ProviderType,
+          cacheDir: resolve(cacheDir),
+          filter,
+          systemPrompt,
+          strict: strict ?? false,
+          concurrency,
+          verbose: verbose ?? false,
+          noCache: noCache ?? false,
+        });
+
+        await writeAllOutputs(report, outputFormats, rawFiles);
+        await writeGitHubStepSummary(report);
+        checkFailStatuses(report, failStatuses);
+      } finally {
+        closelog?.();
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       const body = (err as any)?.cause?.response?.data ?? (err as any)?.response?.data ?? (err as any)?.body ?? null;
