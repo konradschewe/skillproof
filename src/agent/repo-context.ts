@@ -66,7 +66,7 @@ export class RepoContextAgent {
 
       const result = await agent.invoke(
         { messages: [new HumanMessage(`Repo root: ${repoPath}\n\nAnalyse this repository and produce a concise summary.`)] },
-        { callbacks, recursionLimit: 35 } as any
+        { callbacks, recursionLimit: 1_000 } as any
       );
 
       const messages = result.messages as any[];
